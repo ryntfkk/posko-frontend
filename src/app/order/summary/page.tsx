@@ -14,15 +14,11 @@ import useMidtrans from '@/hooks/useMidtrans';
 import { fetchProfile } from '@/features/auth/api';
 import { User, Address, GeoLocation } from '@/features/auth/types';
 
-// Import API & Types Settings & Vouchers
 import { settingsApi } from '@/features/settings/api';
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
-
-// Import komponen lokal
 import { AttachmentUploader } from '@/components/OrderComponents'; 
 
-// Import Dynamic untuk Map
 const LocationPicker = dynamic(
   () => import('@/components/LocationPicker'),
   { 
@@ -60,29 +56,23 @@ function OrderSummaryContent() {
   
   const isSnapLoaded = useMidtrans();
 
-  // State Data User
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
-  // State Settings & Vouchers
   const [adminFee, setAdminFee] = useState(0);
   const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
 
-  // State Form/Input
   const [isProcessing, setIsProcessing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   
-  // State Promo (Modal & Code)
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: number} | null>(null);
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   
-  // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
   const [orderLocation, setOrderLocation] = useState<GeoLocation | undefined>(undefined);
   
-  // Customer Contact
   const [customerContact, setCustomerContact] = useState<CustomerContact>({
     name: '',
     phone: '',
@@ -90,10 +80,8 @@ function OrderSummaryContent() {
   });
   const [showAlternatePhone, setShowAlternatePhone] = useState(false);
   
-  // Order Note
   const [orderNote, setOrderNote] = useState('');
   
-  // Property Details
   const [propertyDetails, setPropertyDetails] = useState<PropertyDetails>({
     type: '',
     floor: null,
@@ -102,23 +90,20 @@ function OrderSummaryContent() {
     accessNote: ''
   });
   
-  // Time Slot
   const [timeSlot, setTimeSlot] = useState<ScheduledTimeSlot>({
     preferredStart: '',
     preferredEnd: '',
     isFlexible: true
   });
   
-  // Attachments 
   interface UIAttachment extends Attachment {
     file?: File;
   }
   const [attachments, setAttachments] = useState<UIAttachment[]>([]);
 
-  // Parse Query Params
   const checkoutType = searchParams?.get('type') as 'direct' | 'basic' || 'basic';
   const selectedProviderId = searchParams?.get('providerId') || null;
-  const categoryParam = searchParams?.get('category') || null;
+  // categoryParam tidak lagi digunakan untuk strict filtering di sini
 
   // Filter Keranjang
   const activeCartItems = useMemo(() => {
@@ -126,22 +111,17 @@ function OrderSummaryContent() {
       if (item.quantity <= 0) return false;
 
       if (checkoutType === 'basic') {
-        if (item.orderType !== 'basic') return false;
-        if (categoryParam) {
-          const itemCategory = (item.category ??  '').toLowerCase();
-          const filterCategory = categoryParam.toLowerCase();
-          return itemCategory === filterCategory;
-        }
-        return true;
+        // [FIXED] Hapus strict category filtering di sini.
+        // Tampilkan semua item basic yang ada di keranjang.
+        return item.orderType === 'basic';
       } else {
         return item.orderType === 'direct' && item.providerId === selectedProviderId;
       }
     });
-  }, [cart, checkoutType, selectedProviderId, categoryParam]);
+  }, [cart, checkoutType, selectedProviderId]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // Ekstrak provider data untuk validasi tanggal
   const providerData = useMemo(() => {
     if (checkoutType === 'direct' && activeCartItems.length > 0) {
       const firstItem = activeCartItems[0];
@@ -153,21 +133,18 @@ function OrderSummaryContent() {
     return { bookedDates: [], blockedDates: [] };
   }, [checkoutType, activeCartItems]);
 
-  // Helper function untuk cek apakah tanggal tidak tersedia
   const isDateUnavailable = useCallback((dateString: string): { unavailable: boolean; reason: string } => {
     if (!dateString) return { unavailable: false, reason: '' };
     
     const selectedDate = new Date(dateString);
     const dateOnly = selectedDate.toISOString().split('T')[0];
     
-    // Cek apakah tanggal sudah lewat
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
       return { unavailable: true, reason: 'Tanggal sudah lewat' };
     }
     
-    // Cek blockedDates
     const isBlocked = providerData.blockedDates.some((d: string) => {
       const blockedDate = d.split('T')[0];
       return blockedDate === dateOnly;
@@ -177,7 +154,6 @@ function OrderSummaryContent() {
       return { unavailable: true, reason: 'Mitra sedang libur pada tanggal ini' };
     }
     
-    // Cek bookedDates
     const isBooked = providerData.bookedDates.some((d: string) => {
       const bookedDate = d.split('T')[0];
       return bookedDate === dateOnly;
@@ -190,11 +166,9 @@ function OrderSummaryContent() {
     return { unavailable: false, reason: '' };
   }, [providerData]);
 
-  // Load User Profile, Settings, & Vouchers
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 1.Load Profile
         const profileRes = await fetchProfile();
         const profile = profileRes.data.profile;
         setUserProfile(profile);
@@ -212,13 +186,11 @@ function OrderSummaryContent() {
           alternatePhone: ''
         });
 
-        // 2.Load Global Config
         const settingsRes = await settingsApi.getGlobalConfig();
         if (settingsRes.data) {
             setAdminFee(settingsRes.data.adminFee);
         }
 
-        // 3.Load My Vouchers
         const vouchersRes = await voucherApi.getMyVouchers();
         if (vouchersRes.data) {
             setAvailableVouchers(vouchersRes.data);
@@ -233,7 +205,6 @@ function OrderSummaryContent() {
     loadData();
   }, []);
 
-  // Handler add attachment pakai File
   const handleAddAttachment = useCallback((file: File, desc: string) => {
     const previewUrl = URL.createObjectURL(file);
     
@@ -245,12 +216,10 @@ function OrderSummaryContent() {
     }]);
   }, []);
 
-  // Handler remove attachment
   const handleRemoveAttachment = useCallback((index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  // Handler update lokasi dari Map
   const handleLocationChange = useCallback((lat: number, lng: number) => {
     setOrderLocation({
         type: 'Point',
@@ -258,7 +227,6 @@ function OrderSummaryContent() {
     });
   }, []);
 
-  // Handler Promo
   const handleApplyPromo = async (code: string) => {
     if (!code) return;
     setIsCheckingVoucher(true);
@@ -299,7 +267,6 @@ function OrderSummaryContent() {
       setAppliedPromo(null);
   };
 
-  // Handler untuk validasi perubahan tanggal
   const handleScheduledAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setScheduledAt(newValue);
@@ -315,7 +282,6 @@ function OrderSummaryContent() {
     }
   };
 
-  // Submit Order
   const handlePlaceOrderAndPay = async () => {
     if (!scheduledAt) {
       alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
@@ -352,9 +318,6 @@ function OrderSummaryContent() {
       
       const finalAmount = Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0));
 
-      // [PERBAIKAN UTAMA DI SINI]
-      // Menggunakan 'as any' pada attachments untuk mem-bypass strict typing 
-      // agar kita bisa mengirim properti 'file' yang dibutuhkan oleh api.ts
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
@@ -377,26 +340,22 @@ function OrderSummaryContent() {
         orderNote: orderNote.trim(),
         propertyDetails: propertyDetails,
         scheduledTimeSlot: timeSlot,
-        // [UPDATE] Sertakan file asli (att.file)
         attachments: attachments.map(att => ({
-            url: att.url, // Ini hanya blob URL preview
+            url: att.url, 
             type: att.type,
             description: att.description,
-            file: att.file // Penting: Ini yang akan dideteksi oleh api.ts untuk convert ke FormData
+            file: att.file 
         })) as any,
         voucherCode: appliedPromo?.code
       };
 
-      console.log("1.Membuat Order...", orderPayload);
       const orderRes = await createOrder(orderPayload);
       const orderId = orderRes.data._id;
       const orderNumber = orderRes.data.orderNumber;
       
-      console.log("2.Meminta Token Pembayaran...");
       const paymentRes = await createPayment(orderId);
       const snapToken = paymentRes.data.snapToken;
 
-      console.log("3. Membuka Snap Midtrans...");
       if (window.snap) {
         window.snap.pay(snapToken, {
           onSuccess: (result) => {
@@ -463,7 +422,6 @@ function OrderSummaryContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans relative">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center gap-3 md:gap-4">
           <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600 p-1">
@@ -480,7 +438,6 @@ function OrderSummaryContent() {
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-4 md:space-y-6">
         
-        {/* Detail Item Pesanan */}
         <section className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -508,13 +465,10 @@ function OrderSummaryContent() {
           </div>
         </section>
 
-        {/* Informasi & Pembayaran */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           
-          {/* Kiri: Form Input */}
           <div className="md:col-span-2 space-y-4 md:space-y-6 min-w-0">
             
-            {/* KONTAK CUSTOMER */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0">
@@ -552,7 +506,6 @@ function OrderSummaryContent() {
                   </div>
                 </div>
 
-                {/* Toggle Nomor Cadangan */}
                 <div className="space-y-2">
                     <label className="flex items-center gap-2 cursor-pointer w-fit">
                         <input 
@@ -579,7 +532,6 @@ function OrderSummaryContent() {
               </div>
             </div>
 
-            {/* JADWAL KUNJUNGAN */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
                 <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
@@ -636,7 +588,6 @@ function OrderSummaryContent() {
               </div>
             </div>
 
-            {/* ALAMAT & MAPS INTEGRATION */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -685,7 +636,6 @@ function OrderSummaryContent() {
               )}
             </div>
 
-            {/* DETAIL PROPERTI (Layout Baru) */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
                 <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Properti</p>
@@ -693,7 +643,6 @@ function OrderSummaryContent() {
               </div>
               
               <div className="space-y-4">
-                {/* Baris 1: Tipe Properti */}
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Tipe Properti</label>
                   <select 
@@ -711,7 +660,6 @@ function OrderSummaryContent() {
                   </select>
                 </div>
 
-                {/* Baris 2: Lantai - Parkir - Lift */}
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
                     <div className="w-full md:w-32">
                         <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai</label>
@@ -747,7 +695,6 @@ function OrderSummaryContent() {
                     </div>
                 </div>
                 
-                {/* Baris 3: Catatan Akses */}
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses</label>
                   <input 
@@ -761,9 +708,7 @@ function OrderSummaryContent() {
               </div>
             </div>
 
-            {/* DOKUMENTASI & CATATAN (DIGABUNG) */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-               {/* Bagian Catatan */}
                <div className="space-y-3">
                     <div>
                         <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Tambahan</p>
@@ -780,7 +725,6 @@ function OrderSummaryContent() {
 
                <div className="border-t border-gray-100"></div>
 
-               {/* Bagian Foto */}
                <div className="space-y-3">
                    <div>
                         <h3 className="text-sm md:text-base font-bold text-gray-900">Lampiran Foto</h3>
@@ -796,7 +740,6 @@ function OrderSummaryContent() {
 
           </div>
 
-          {/* Kanan: Ringkasan Pembayaran */}
           <div className="space-y-6">
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 sticky top-24">
               <h2 className="text-base md:text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Ringkasan Pembayaran</h2>
@@ -813,7 +756,6 @@ function OrderSummaryContent() {
                   </span>
                 </div>
                 
-                {/* PROMO CODE DISPLAY */}
                 {appliedPromo ?  (
                    <div className="flex justify-between items-center text-green-600 bg-green-50 p-2 rounded-lg border border-green-100">
                      <div className="flex flex-col">
@@ -850,7 +792,6 @@ function OrderSummaryContent() {
                 </div>
               </div>
 
-              {/* TOMBOL BAYAR UTAMA */}
               <button 
                 onClick={handlePlaceOrderAndPay}
                 disabled={isProcessing || !selectedAddress || !scheduledAt || !customerContact.phone.trim()}
@@ -886,7 +827,6 @@ function OrderSummaryContent() {
         </section>
       </main>
 
-      {/* MODAL PROMO */}
       {isPromoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-20">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
@@ -898,7 +838,6 @@ function OrderSummaryContent() {
                 </div>
                 
                 <div className="p-4 space-y-4">
-                    {/* Input Code */}
                     <div className="flex gap-2">
                         <input 
                             type="text" 
@@ -919,7 +858,6 @@ function OrderSummaryContent() {
                         </button>
                     </div>
                     
-                    {/* List Voucher */}
                     <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Voucher Tersedia</p>
                         {availableVouchers.length > 0 ? (

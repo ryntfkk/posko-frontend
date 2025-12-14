@@ -18,6 +18,7 @@ export interface Service {
   slug?: string;
   
   // [UPDATE] Mengubah dari string tunggal menjadi Array Kategori
+  // Backend mengirim array object karena populate, bukan sekedar string ID
   categories: Category[]; 
   
   shortDescription?: string;

@@ -8,7 +8,6 @@ import { fetchServices } from '@/features/services/api';
 import { fetchProviderById } from '@/features/providers/api';
 import { Service, getUnitLabel } from '@/features/services/types';
 import { Provider } from '@/features/providers/types';
-// Pastikan import ini benar
 import { getCartItemId, useCart } from '@/features/cart/useCart';
 
 const formatCurrency = (amount: number) => {
@@ -49,13 +48,10 @@ interface CheckoutOption {
   discountPercent?: number;
 }
 
-// Komponen Content dipisah agar bisa dibungkus Suspense
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // [CRITICAL FIX] Menggunakan isInitialized (sesuai update useCart Langkah 3)
-  // Jangan gunakan isHydrated karena sudah dihapus/diganti namanya
   const { cart, upsertItem, clearCart, isInitialized, checkConflict, resetAndAddItem } = useCart();
 
   // State Data
@@ -75,10 +71,8 @@ function CheckoutContent() {
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [pendingItem, setPendingItem] = useState<any>(null);
 
-  // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
   
-  // State untuk menyimpan kategori yang terdeteksi dari provider
   const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
   
   const categoryParam = searchParams?.get('category') || null;
@@ -112,8 +106,13 @@ function CheckoutContent() {
           setProvider(res.data);
           
           const activeServices = res.data.services?.filter((s: { isActive: boolean }) => s.isActive) || [];
-          if (activeServices.length > 0 && activeServices[0].serviceId?.category) {
-            setDetectedCategory(activeServices[0].serviceId.category);
+          if (activeServices.length > 0) {
+             const firstSvc = activeServices[0].serviceId;
+             if (firstSvc.categories && Array.isArray(firstSvc.categories) && firstSvc.categories.length > 0) {
+                 setDetectedCategory(firstSvc.categories[0].slug || null);
+             } else if (typeof (firstSvc as any).category === 'string') {
+                 setDetectedCategory((firstSvc as any).category);
+             }
           }
         }
       } catch (err) {
@@ -132,47 +131,71 @@ function CheckoutContent() {
   // 3. Normalisasi Data untuk UI
   const availableOptions: CheckoutOption[] = useMemo(() => {
     if (checkoutType === 'basic') {
-      return services.map(s => ({
-        id: s._id,
-        name: s.name,
-        category: s.category,
-        description: s.description || 'Layanan standar aplikasi.',
-        shortDescription: s.shortDescription,
-        price: s.displayPrice || s.basePrice,
-        unit: s.unit || 'unit',
-        unitLabel: s.unitLabel,
-        displayUnit: s.displayUnit || getUnitLabel(s.unit || 'unit', s.unitLabel),
-        estimatedDuration: s.estimatedDuration,
-        includes: s.includes,
-        excludes: s.excludes,
-        isPromo: s.isPromo,
-        promoPrice: s.promoPrice,
-        discountPercent: s.discountPercent,
-      }));
+      return services.map(s => {
+        let extractedCategoryName = 'Umum';
+        
+        if (s.categories && Array.isArray(s.categories) && s.categories.length > 0) {
+            if (effectiveCategory) {
+                const matchedCat = s.categories.find(c => c.slug === effectiveCategory.toLowerCase());
+                extractedCategoryName = matchedCat ? matchedCat.name : s.categories[0].name;
+            } else {
+                extractedCategoryName = s.categories[0].name;
+            }
+        }
+
+        return {
+            id: s._id,
+            name: s.name,
+            category: extractedCategoryName, 
+            description: s.description || 'Layanan standar aplikasi.',
+            shortDescription: s.shortDescription,
+            price: s.displayPrice || s.basePrice,
+            unit: s.unit || 'unit',
+            unitLabel: s.unitLabel,
+            displayUnit: s.displayUnit || getUnitLabel(s.unit || 'unit', s.unitLabel),
+            estimatedDuration: s.estimatedDuration,
+            includes: s.includes,
+            excludes: s.excludes,
+            isPromo: s.isPromo,
+            promoPrice: s.promoPrice,
+            discountPercent: s.discountPercent,
+        };
+      });
     } else {
       if (!provider) return [];
 
       return provider.services
         .filter(item => item.isActive)
-        .map(item => ({
-          id: item.serviceId._id,
-          name: item.serviceId.name,
-          category: item.serviceId.category,
-          description: item.serviceId.description || `Layanan oleh ${provider.userId.fullName}`,
-          shortDescription: item.serviceId.shortDescription,
-          price: item.price,
-          unit: item.serviceId.unit || 'unit',
-          unitLabel: item.serviceId.unitLabel,
-          displayUnit: item.serviceId.displayUnit || getUnitLabel(item.serviceId.unit || 'unit', item.serviceId.unitLabel),
-          estimatedDuration: item.serviceId.estimatedDuration,
-          includes: item.serviceId.includes,
-          excludes: item.serviceId.excludes,
-          isPromo: item.serviceId.isPromo,
-          promoPrice: item.serviceId.promoPrice,
-          discountPercent: item.serviceId.discountPercent,
-        }));
+        .map(item => {
+            const s = item.serviceId;
+            let extractedCategoryName = 'Umum';
+
+            if (s.categories && Array.isArray(s.categories) && s.categories.length > 0) {
+                 extractedCategoryName = s.categories[0].name;
+            } else if ((s as any).category) {
+                 extractedCategoryName = (s as any).category;
+            }
+
+            return {
+                id: s._id,
+                name: s.name,
+                category: extractedCategoryName,
+                description: s.description || `Layanan oleh ${provider.userId.fullName}`,
+                shortDescription: s.shortDescription,
+                price: item.price,
+                unit: s.unit || 'unit',
+                unitLabel: s.unitLabel,
+                displayUnit: s.displayUnit || getUnitLabel(s.unit || 'unit', s.unitLabel),
+                estimatedDuration: s.estimatedDuration,
+                includes: s.includes,
+                excludes: s.excludes,
+                isPromo: s.isPromo,
+                promoPrice: s.promoPrice,
+                discountPercent: s.discountPercent,
+            };
+        });
     }
-  }, [checkoutType, services, provider]);
+  }, [checkoutType, services, provider, effectiveCategory]);
 
   const providerLabel = useMemo(() => {
     if (!selectedProviderId) return 'Cari Cepat';
@@ -180,31 +203,51 @@ function CheckoutContent() {
     return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
-  // Filter keranjang
+  // [FIXED] Filter Sidebar Checkout agar Match Name vs Slug
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
       if (item.quantity <= 0) return false;
 
       if (checkoutType === 'basic') {
         if (item.orderType !== 'basic') return false;
+        
         if (effectiveCategory) {
-          const itemCategory = (item.category ?? '').toLowerCase();
-          const filterCategory = effectiveCategory.toLowerCase();
-          return itemCategory === filterCategory;
+          // Masalah: effectiveCategory adalah SLUG (dari URL), sedangkan item.category adalah NAME.
+          // Solusi: Kita cari NAME yang sesuai dengan SLUG effectiveCategory dari daftar services yang sudah diload.
+          
+          let targetCategoryName = effectiveCategory; // Fallback jika tidak ketemu
+          
+          // Cari di daftar services yang sedang ditampilkan
+          const matchingService = services.find(s => 
+             s.categories && s.categories.some(c => c.slug === effectiveCategory.toLowerCase())
+          );
+
+          if (matchingService && matchingService.categories) {
+              const catObj = matchingService.categories.find(c => c.slug === effectiveCategory.toLowerCase());
+              if (catObj) {
+                  targetCategoryName = catObj.name;
+              }
+          }
+          
+          const itemCat = (item.category ?? '').toLowerCase();
+          const targetCatName = targetCategoryName.toLowerCase();
+          const targetCatSlug = effectiveCategory.toLowerCase();
+          
+          // Izinkan match dengan Name ATAU Slug (jaga-jaga)
+          return itemCat === targetCatName || itemCat === targetCatSlug;
         }
         return true;
       } else {
         return item.orderType === 'direct' && item.providerId === selectedProviderId;
       }
     });
-  }, [cart, checkoutType, selectedProviderId, effectiveCategory]);
+  }, [cart, checkoutType, selectedProviderId, effectiveCategory, services]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // 4. Auto-Add Service Logic
   useEffect(() => {
-    // [FIX] Gunakan isInitialized di sini juga
     if (!isInitialized || hasAutoAdded.current || availableOptions.length === 0) return;
     if (!serviceIdParam) return;
 
@@ -236,7 +279,7 @@ function CheckoutContent() {
       window.history.replaceState(null, '', `?${newParams.toString()}`);
     }
   }, [
-      isInitialized, // [FIX] Dependency diperbarui
+      isInitialized, 
       serviceIdParam, 
       availableOptions, 
       checkoutType, 
@@ -253,7 +296,6 @@ function CheckoutContent() {
   };
 
   const handleConfirmOrder = async () => {
-    // [CRITICAL FIX] Cek isInitialized, BUKAN isHydrated
     if (!isInitialized) {
         console.warn("Cart belum siap (not initialized)");
         return;
@@ -270,6 +312,9 @@ function CheckoutContent() {
         type: checkoutType,
       });
       
+      // Jika basic, kita tidak perlu terlalu strict mengirim kategori ke Summary
+      // karena Summary page filter-nya akan kita relax.
+      // Tapi kita kirim saja untuk konsistensi URL.
       if (checkoutType === 'basic' && effectiveCategory) {
         queryParams.append('category', effectiveCategory);
       }
@@ -278,12 +323,11 @@ function CheckoutContent() {
         queryParams.append('providerId', selectedProviderId);
       }
 
-      // Navigasi ke halaman Summary
       router.push(`/order/summary?${queryParams.toString()}`);
     } catch (err) {
       console.error(err);
       alert('Terjadi kendala saat navigasi.');
-      setIsSubmitting(false); // Reset state hanya jika gagal
+      setIsSubmitting(false);
     }
   };
 
@@ -322,7 +366,7 @@ function CheckoutContent() {
       const itemPayload = {
         serviceId: option.id,
         serviceName: option.name,
-        category: option.category,
+        category: option.category, 
         orderType: checkoutType,
         quantity: newQuantity,
         pricePerUnit: option.price,
@@ -751,7 +795,6 @@ function CheckoutContent() {
         </div>
       )}
 
-      {/* [NEW] Modal Konfirmasi Ganti Keranjang */}
       {isConflictModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
