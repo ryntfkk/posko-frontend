@@ -10,8 +10,8 @@ import {
   registerUser, 
   preRegister, 
   verifyPreOtp,
-  requestPhoneOtp, // [NEW] Import API WA
-  verifyPhoneOtp   // [NEW] Import API WA
+  requestPhoneOtp, 
+  verifyPhoneOtp
 } from '@/features/auth/api';
 import { RegisterPayload } from '@/features/auth/types';
 import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
@@ -259,6 +259,9 @@ export default function RegisterPage() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
+    // Reset error msg when typing
+    if (errorMsg) setErrorMsg('');
+
     if (name === 'password') {
       checkPasswordStrength(value);
     }
@@ -295,6 +298,7 @@ export default function RegisterPage() {
       return alert('Masukkan email yang valid');
     }
     
+    console.log('[Frontend] Requesting Email OTP for:', formData.email);
     setIsLoading(true);
     try {
       await preRegister(formData.email);
@@ -302,8 +306,14 @@ export default function RegisterPage() {
       setOtpTimer(60);
       setErrorMsg('');
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mengirim OTP Email.';
-      setErrorMsg(msg);
+      console.error('[Frontend] Email OTP Error:', error);
+      // Handle Specific Conflict Error
+      if (error.response?.status === 409) {
+        setErrorMsg('Email sudah terdaftar. Silakan login atau gunakan email lain.');
+      } else {
+        const msg = error.response?.data?.message || 'Gagal mengirim OTP Email.';
+        setErrorMsg(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -323,6 +333,7 @@ export default function RegisterPage() {
       setErrorMsg('');
       alert('Email berhasil diverifikasi! Silakan lengkapi password.');
     } catch (error: any) {
+      console.error('[Frontend] Verify Email OTP Error:', error);
       const msg = error.response?.data?.message || 'Kode OTP salah.';
       setErrorMsg(msg);
     } finally {
@@ -333,14 +344,20 @@ export default function RegisterPage() {
   const handleResendOtp = async () => {
     if (otpTimer > 0) return;
     
+    console.log('[Frontend] Resending Email OTP to:', formData.email);
     setIsLoading(true);
     try {
       await preRegister(formData.email);
       setOtpTimer(60);
       alert('Kode OTP baru telah dikirim ke Email.');
-    } catch (error) {
-      console.error(error);
-      alert('Gagal mengirim ulang OTP.');
+    } catch (error: any) {
+      console.error('[Frontend] Resend Email OTP Error:', error);
+      if (error.response?.status === 409) {
+         setErrorMsg('Email sudah terdaftar. Mohon login.');
+         setOtpMode(false); // Close modal if email already exists
+      } else {
+         alert('Gagal mengirim ulang OTP.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -354,6 +371,7 @@ export default function RegisterPage() {
       return alert('Masukkan nomor WhatsApp yang valid (min 10 digit).');
     }
 
+    console.log('[Frontend] Requesting WhatsApp OTP for:', formData.phoneNumber);
     setIsLoading(true);
     try {
       await requestPhoneOtp(formData.phoneNumber);
@@ -361,8 +379,14 @@ export default function RegisterPage() {
       setPhoneOtpTimer(60);
       setErrorMsg('');
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mengirim OTP WhatsApp.';
-      setErrorMsg(msg);
+      console.error('[Frontend] WhatsApp OTP Error:', error);
+      // Handle Specific Conflict Error
+      if (error.response?.status === 409) {
+        setErrorMsg('Nomor WhatsApp sudah terdaftar. Gunakan nomor lain atau login.');
+      } else {
+        const msg = error.response?.data?.message || 'Gagal mengirim OTP WhatsApp.';
+        setErrorMsg(msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -382,6 +406,7 @@ export default function RegisterPage() {
       setErrorMsg('');
       alert('Nomor WhatsApp berhasil diverifikasi!');
     } catch (error: any) {
+      console.error('[Frontend] Verify WhatsApp OTP Error:', error);
       const msg = error.response?.data?.message || 'Kode OTP WhatsApp salah.';
       setErrorMsg(msg);
     } finally {
@@ -392,13 +417,14 @@ export default function RegisterPage() {
   const handleResendPhoneOtp = async () => {
     if (phoneOtpTimer > 0) return;
 
+    console.log('[Frontend] Resending WhatsApp OTP to:', formData.phoneNumber);
     setIsLoading(true);
     try {
       await requestPhoneOtp(formData.phoneNumber);
       setPhoneOtpTimer(60);
       alert('Kode OTP baru telah dikirim ke WhatsApp.');
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      console.error('[Frontend] Resend WhatsApp OTP Error:', error);
       alert('Gagal mengirim ulang OTP WhatsApp.');
     } finally {
       setIsLoading(false);
@@ -505,6 +531,7 @@ export default function RegisterPage() {
     }
 
     setIsLoading(true);
+    console.log('[Frontend] Submitting Registration Data...');
     
     try {
       const payload: RegisterPayload = {
@@ -533,10 +560,12 @@ export default function RegisterPage() {
       
       await registerUser(payload);
       
+      console.log('[Frontend] Registration Success');
       router.push('/');
       router.refresh();
       
     } catch (error: any) {
+      console.error('[Frontend] Registration Error:', error);
       const msg = error.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
       setErrorMsg(msg);
       setIsLoading(false);
