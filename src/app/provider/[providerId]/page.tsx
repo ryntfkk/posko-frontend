@@ -2,15 +2,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // [UPDATE] Import useRouter
 import { useEffect, useState } from 'react';
 
+import api from '@/lib/axios'; // [UPDATE] Import axios instance
 import { fetchProviderById } from '@/features/providers/api';
 import { fetchProfile } from '@/features/auth/api';
 import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 
-// Import semua komponen dari folder components
 import {
   calculateDistance,
   TabType,
@@ -29,6 +29,7 @@ import {
 
 export default function ProviderProfilePage() {
   const params = useParams();
+  const router = useRouter(); // [UPDATE]
   const providerId = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
 
   // Data State
@@ -40,6 +41,7 @@ export default function ProviderProfilePage() {
   // Interaction State
   const [isFavorited, setIsFavorited] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false); // [BARU] Loading state chat
 
   // Calendar State
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -115,6 +117,35 @@ export default function ProviderProfilePage() {
     setIsFavorited(! isFavorited);
   };
 
+  // [BARU] Handler Chat: Buat room jika belum ada, lalu redirect
+  const handleChat = async () => {
+    if (!currentUser) {
+        alert('Silakan login terlebih dahulu untuk chat dengan mitra.');
+        router.push('/login');
+        return;
+    }
+
+    if (!provider || !provider.userId) return;
+
+    if (isChatLoading) return;
+    setIsChatLoading(true);
+
+    try {
+        // Panggil endpoint create room
+        // Payload: { targetUserId: string }
+        await api.post('/chat', { targetUserId: provider.userId._id });
+        
+        // Redirect ke halaman chat (Next.js akan handle fetching list terbaru di sana)
+        router.push('/chat');
+    } catch (error: any) {
+        console.error('Gagal memulai chat:', error);
+        const msg = error.response?.data?.message || 'Gagal menghubungkan chat.';
+        alert(msg);
+    } finally {
+        setIsChatLoading(false);
+    }
+  };
+
   const handleOpenCalendar = () => {
     setIsCalendarOpen(true);
   };
@@ -160,9 +191,8 @@ export default function ProviderProfilePage() {
   }
 
   return (
-    // CONTAINER UTAMA: pb-24 -> pb-20 (Lebih kompak)
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-12 font-sans">
-      {/* HEADER: py-3 -> py-2 (Lebih sleek) */}
+      {/* HEADER */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 transition-all">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
           <Link
@@ -171,15 +201,14 @@ export default function ProviderProfilePage() {
           >
             <BackIcon />
           </Link>
-          {/* JUDUL: text-sm font-bold tetap ringkas */}
           <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Profil Mitra</h1>
           <div className="w-8"></div>
         </div>
       </header>
 
-      {/* MAIN CONTENT: py-6 -> py-4 (Ringkas). space-y-6 -> space-y-4 */}
+      {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-4 lg:px-8 py-4 space-y-4">
-        {/* 1.HERO SECTION (Sudah diperbaiki di L2) */}
+        {/* 1.HERO SECTION */}
         <ProviderHeroSection
           provider={provider}
           distance={distance}
@@ -188,9 +217,10 @@ export default function ProviderProfilePage() {
           onToggleFavorite={handleToggleFavorite}
           onShare={handleShare}
           onOpenCalendar={handleOpenCalendar}
+          onChat={handleChat} // [BARU] Pass handler ke child
         />
 
-        {/* LAYOUT GRID UTAMA: gap-6 -> gap-4 (Rapat) */}
+        {/* LAYOUT GRID UTAMA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* KOLOM KIRI (Tab Section: Services & Docs) */}
           <div className="lg:col-span-2">
@@ -210,7 +240,7 @@ export default function ProviderProfilePage() {
         </div>
       </main>
 
-      {/* MODALS (Tidak berubah) */}
+      {/* MODALS */}
       <ProviderCalendarModal
         provider={provider}
         isOpen={isCalendarOpen}
@@ -230,7 +260,7 @@ export default function ProviderProfilePage() {
         onClose={handleCloseLightbox}
       />
 
-      {/* STICKY BOTTOM CTA (Mobile Only - Diperbaiki di 4.2) */}
+      {/* STICKY BOTTOM CTA */}
       <ProviderStickyBottomCTA provider={provider} />
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Provider } from '../types';
-import { ShareIcon, HeartIcon, CalendarIcon } from './Icons';
+import { ShareIcon, HeartIcon, CalendarIcon, ChatIcon } from './Icons'; // Pastikan ChatIcon ada/diimport
 
 interface ProviderHeroSectionProps {
   provider: Provider;
@@ -12,6 +12,7 @@ interface ProviderHeroSectionProps {
   onToggleFavorite: () => void;
   onShare: () => void;
   onOpenCalendar: () => void;
+  onChat: () => void; // [BARU] Handler untuk Chat
 }
 
 export default function ProviderHeroSection({
@@ -22,11 +23,9 @@ export default function ProviderHeroSection({
   onToggleFavorite,
   onShare,
   onOpenCalendar,
+  onChat, // [BARU]
 }: ProviderHeroSectionProps) {
   const totalOrders = provider.totalCompletedOrders ?? 0;
-  
-  // Asumsi: Pastikan tipe data 'Provider' Anda memiliki properti 'totalFavorites'
-  // Jika nama di database berbeda (misal: favoritesCount), silakan sesuaikan di sini.
   const totalFavorites = (provider as any).totalFavorites ?? 0; 
 
   return (
@@ -37,7 +36,6 @@ export default function ProviderHeroSection({
         {/* Profile Picture */}
         <div className="flex justify-center md:justify-start shrink-0">
           <div className="relative w-28 h-28 lg:w-36 lg:h-36">
-            {/* Class rounded-full & overflow-hidden memastikan foto benar-benar bulat */}
             <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100 relative">
               <Image
                 src={
@@ -77,8 +75,6 @@ export default function ProviderHeroSection({
           <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
             {/* Stats Block */}
             <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm w-full sm:w-auto justify-center sm:justify-start">
-              
-              {/* Rating */}
               <div className="flex items-center gap-1.5 pr-2">
                 <span className="text-yellow-500 text-lg">★</span>
                 <div className="flex flex-col items-start">
@@ -89,7 +85,6 @@ export default function ProviderHeroSection({
                 </div>
               </div>
 
-              {/* Pesanan */}
               <div className="flex flex-col items-start pl-4">
                 <span className="text-sm font-black text-gray-900 leading-none">
                   {totalOrders > 0 ? (totalOrders > 99 ? '99+' : totalOrders) : '0'}
@@ -97,24 +92,31 @@ export default function ProviderHeroSection({
                 <span className="text-[9px] text-gray-400 font-bold uppercase">Pesanan</span>
               </div>
 
-              {/* BARU: Jumlah Favorit */}
               <div className="flex flex-col items-start pl-4">
                 <span className="text-sm font-black text-gray-900 leading-none">
                   {totalFavorites > 0 ? (totalFavorites > 999 ? '999+' : totalFavorites) : '0'}
                 </span>
                 <span className="text-[9px] text-gray-400 font-bold uppercase">Favorit</span>
               </div>
-
             </div>
 
             {/* Actions */}
             <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+              {/* [BARU] Tombol Chat */}
+              <button
+                onClick={onChat}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-colors shadow-md active:scale-95"
+              >
+                <ChatIcon className="w-4 h-4 text-white" />
+                <span className="text-xs font-bold">Chat Mitra</span>
+              </button>
+
               <button
                 onClick={onOpenCalendar}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
               >
                 <CalendarIcon />
-                <span className="text-xs font-bold">Lihat Jadwal</span>
+                <span className="text-xs font-bold">Jadwal</span>
               </button>
 
               <button

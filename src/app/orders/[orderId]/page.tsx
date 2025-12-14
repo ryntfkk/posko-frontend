@@ -1,7 +1,7 @@
 // src/app/orders/[orderId]/page.tsx
 'use client';
 
-import { useEffect, useState, useMemo } from 'react'; // [FIX] Hapus 'use'
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -48,7 +48,9 @@ const Icons = {
   Parking: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10v9m4-9v9m-4-9h5a3 3 0 000-6H5v6z" /></svg>,
   Elevator: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>,
   Info: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-  Printer: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+  Printer: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>,
+  Help: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+  Zoom: () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
 };
 
 // --- HELPERS ---
@@ -87,12 +89,10 @@ const formatCountdown = (ms: number) => {
 };
 
 interface PageProps {
-  // [FIX] Untuk Next.js 14, params adalah object biasa, bukan Promise
   params: { orderId: string };
 }
 
 export default function OrderDetailPage({ params }: PageProps) {
-  // [FIX] Akses langsung params tanpa hook use()
   const { orderId } = params;
   
   const [order, setOrder] = useState<Order | null>(null);
@@ -104,6 +104,9 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Lightbox State
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Payment Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -207,7 +210,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   };
 
   const handleConfirmComplete = async () => {
-    if (!confirm('Pekerjaan selesai?')) return;
+    if (!confirm('Pastikan Anda sudah memeriksa pekerjaan mitra secara langsung.\n\nKlik OK jika pekerjaan sudah sesuai.')) return;
     setIsActionLoading(true);
     try {
       await updateOrderStatus(orderId, 'completed');
@@ -247,6 +250,11 @@ export default function OrderDetailPage({ params }: PageProps) {
     } finally {
         setIsSubmittingReview(false);
     }
+  };
+
+  const openSupportWA = () => {
+    const message = `Halo Admin Posko, saya butuh bantuan untuk Order ID: ${order?.orderNumber}`;
+    window.open(`https://wa.me/6281234567890?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const getStatusInfo = (status: OrderStatus) => {
@@ -313,6 +321,9 @@ export default function OrderDetailPage({ params }: PageProps) {
             </Link>
             <h1 className="text-sm font-bold">Rincian Pesanan</h1>
         </div>
+        <button onClick={openSupportWA} className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+            <Icons.Help /> Bantuan
+        </button>
       </div>
 
       <main className="max-w-xl mx-auto p-3 space-y-3">
@@ -369,16 +380,21 @@ export default function OrderDetailPage({ params }: PageProps) {
         )}
 
         {/* WARNING BANNER (AUTO COMPLETE DEADLINE) */}
-        {autoCompleteDeadline && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3 shadow-sm">
-                <div className="shrink-0 text-amber-600 mt-0.5">
-                    <Icons.Clock />
+        {order.status === 'waiting_approval' && (
+            <div className="bg-pink-50 border border-pink-200 rounded-xl p-3 flex items-start gap-3 shadow-sm">
+                <div className="shrink-0 text-pink-600 mt-0.5">
+                    <Icons.CheckCircle />
                 </div>
                 <div>
-                    <p className="text-[10px] font-bold text-amber-800 uppercase mb-0.5">Konfirmasi Otomatis</p>
-                    <p className="text-xs text-amber-900 leading-relaxed">
-                        Sistem akan menyelesaikan pesanan ini secara otomatis pada <span className="font-bold">{formatDate(autoCompleteDeadline.toISOString())}, {formatTime(autoCompleteDeadline.toISOString())}</span> jika Anda tidak melakukan konfirmasi.
+                    <p className="text-[10px] font-bold text-pink-800 uppercase mb-0.5">Konfirmasi Pekerjaan</p>
+                    <p className="text-xs text-pink-900 leading-relaxed mb-2">
+                        Mitra telah menandai pekerjaan selesai. Mohon <strong>periksa fisik</strong> hasil pengerjaan sebelum konfirmasi.
                     </p>
+                    {autoCompleteDeadline && (
+                        <p className="text-[10px] text-pink-700 italic">
+                            Otomatis selesai pada: {formatDate(autoCompleteDeadline.toISOString())}, {formatTime(autoCompleteDeadline.toISOString())}
+                        </p>
+                    )}
                 </div>
             </div>
         )}
@@ -407,9 +423,9 @@ export default function OrderDetailPage({ params }: PageProps) {
                    <Icons.Phone />
                  </a>
                )}
-               <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+               <Link href="/chat" className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                  <Icons.Chat />
-               </button>
+               </Link>
             </div>
           </div>
         )}
@@ -639,7 +655,7 @@ export default function OrderDetailPage({ params }: PageProps) {
               <h3 className="text-[10px] font-bold text-gray-400 px-1 uppercase tracking-wide">Foto Kondisi Awal</h3>
               <div className="grid grid-cols-4 gap-2">
                 {order.attachments.map((att, i) => (
-                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-white border border-gray-200 shadow-sm">
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-white border border-gray-200 shadow-sm cursor-pointer" onClick={() => setLightboxImage(att.url)}>
                     <Image src={att.url} alt="Att" fill className="object-cover" />
                   </div>
                 ))}
@@ -647,17 +663,24 @@ export default function OrderDetailPage({ params }: PageProps) {
            </div>
         )}
 
-        {/* 8. COMPLETION EVIDENCE */}
+        {/* 8. COMPLETION EVIDENCE (WITH LIGHTBOX TRIGGER) */}
         {order.completionEvidence && order.completionEvidence.length > 0 && (
            <div className="bg-green-50 rounded-xl p-3 border border-green-100 space-y-2 mt-2">
               <h3 className="text-xs font-bold text-green-800 flex items-center gap-1.5">
                 <Icons.CheckCircle /> Bukti Pekerjaan Selesai
               </h3>
+              <p className="text-[10px] text-green-700">Klik foto untuk memperbesar dan memeriksa detail.</p>
               <div className="grid grid-cols-3 gap-2">
                  {order.completionEvidence.map((ev, i) => (
                     <div key={i} className="space-y-1">
-                       <div className="relative aspect-square rounded-lg overflow-hidden border border-green-200 shadow-sm bg-white">
+                       <div 
+                         className="relative aspect-square rounded-lg overflow-hidden border border-green-200 shadow-sm bg-white cursor-pointer hover:opacity-90 transition-opacity"
+                         onClick={() => setLightboxImage(ev.url)}
+                       >
                          <Image src={ev.url} alt="Bukti" fill className="object-cover" />
+                         <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 bg-black/20 transition-opacity">
+                            <Icons.Zoom />
+                         </div>
                        </div>
                     </div>
                  ))}
@@ -711,6 +734,33 @@ export default function OrderDetailPage({ params }: PageProps) {
            </div>
         )}
       </div>
+
+      {/* LIGHTBOX MODAL */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center">
+             <button 
+               onClick={() => setLightboxImage(null)}
+               className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-50"
+             >
+               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
+             <div className="relative w-full h-[80vh]">
+               <Image 
+                 src={lightboxImage} 
+                 alt="Preview" 
+                 fill 
+                 className="object-contain"
+                 priority
+               />
+             </div>
+             <p className="text-white text-sm mt-4 text-center">Ketuk di mana saja untuk menutup</p>
+          </div>
+        </div>
+      )}
 
       <ReviewModal 
         isOpen={isReviewModalOpen}
