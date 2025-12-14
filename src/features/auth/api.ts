@@ -58,6 +58,16 @@ export const loginUser = async (credentials: LoginPayload) => {
 export const registerUser = async (payload: RegisterPayload) => {
   const response = await api.post<AuthResponse>('/auth/register', payload);
   
+  // [NOTE] Di backend baru, register tidak langsung return token, 
+  // jadi kita tidak setToken disini, melainkan di verifyOtp
+  
+  return response.data;
+};
+
+// [NEW] Fungsi Verifikasi OTP
+export const verifyOtp = async (email: string, otp: string) => {
+  const response = await api.post<AuthResponse>('/auth/verify-otp', { email, otp });
+  
   if (response.data.data.tokens) {
     safeSetToken(response.data.data.tokens.accessToken);
     try {
@@ -67,6 +77,12 @@ export const registerUser = async (payload: RegisterPayload) => {
     }
   }
   
+  return response.data;
+};
+
+// [NEW] Fungsi Kirim Ulang OTP
+export const resendOtp = async (email: string) => {
+  const response = await api.post('/auth/resend-otp', { email });
   return response.data;
 };
 
