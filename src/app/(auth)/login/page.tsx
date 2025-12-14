@@ -193,7 +193,8 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <label htmlFor="password" className="block text-gray-700 text-xs font-bold uppercase tracking-wider">Password</label>
-                <Link href="#" className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline">Lupa Password?</Link>
+                {/* [FIX] Link Forgot Password yang Benar */}
+                <Link href="/forgot-password" className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline">Lupa Password?</Link>
               </div>
               <div className="relative">
                 <input

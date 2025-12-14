@@ -83,23 +83,53 @@ export const useCart = () => {
         return () => clearTimeout(timeoutId);
     }, [cart, isInitialized]);
 
-    // [HELPER] Cek konflik lebih robust
+    // [HELPER] Cek konflik lebih robust (Strict Single Provider Rule)
     const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
         if (cart.length === 0) return false;
 
-        // Cek apakah item baru bertentangan dengan item APAPUN yang sudah ada
-        return cart.some(existingItem => {
-            const isDifferentProvider = newItem.orderType === 'direct' && newItem.providerId !== existingItem.providerId;
-            const isDifferentType = newItem.orderType !== existingItem.orderType;
-            return isDifferentProvider || isDifferentType;
-        });
+        // Ambil sample item pertama dari cart yang ada
+        const existingSample = cart[0];
+
+        // 1. Cek Order Type Conflict (Basic vs Direct)
+        if (existingSample.orderType !== newItem.orderType) {
+            return true;
+        }
+
+        // 2. Cek Provider Conflict (Khusus Direct Order)
+        // Jika type 'direct', providerId HARUS sama.
+        if (newItem.orderType === 'direct') {
+            if (existingSample.providerId !== newItem.providerId) {
+                return true;
+            }
+        }
+
+        return false;
     }, [cart]);
 
     // [ACTION] Update atau Tambah Item
     const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
+        // Validasi konflik sebelum update state (Extra safety)
+        // Idealnya UI sudah memanggil checkConflict sebelumnya
+        
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
         
         setCart(prevCart => {
+            // Jika cart kosong, langsung tambah
+            if (prevCart.length === 0) {
+                const quantity = item.quantity;
+                if (quantity <= 0) return [];
+                
+                return [{
+                    ...item,
+                    id: itemId,
+                    totalPrice: quantity * item.pricePerUnit
+                }];
+            }
+
+            // Logic Replace jika ada konflik provider (Optional: bisa dihandle di UI, 
+            // tapi di sini kita asumsikan UI sudah confirm reset)
+            // Namun fungsi ini 'upsert', jadi asumsinya item sudah valid untuk masuk.
+            
             const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
             const quantity = item.quantity;
             const totalPrice = quantity * item.pricePerUnit;

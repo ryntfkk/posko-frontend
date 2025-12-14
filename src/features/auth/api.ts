@@ -7,8 +7,8 @@ import {
   RegisterPayload,
   PreRegisterResponse,
   VerifyPreOtpResponse,
-  RequestPhoneOtpResponse, // [NEW]
-  VerifyPhoneOtpResponse   // [NEW]
+  RequestPhoneOtpResponse, 
+  VerifyPhoneOtpResponse
 } from './types';
 
 // [HELPER] Cookie Management
@@ -71,6 +71,24 @@ export const requestPhoneOtp = async (phoneNumber: string) => {
 // [NEW] Verify Phone OTP (Validasi OTP & Dapat Token WA)
 export const verifyPhoneOtp = async (phoneNumber: string, otp: string) => {
   const response = await api.post<VerifyPhoneOtpResponse>('/auth/verify-phone-otp', { phoneNumber, otp });
+  return response.data;
+};
+
+// [RECOVERY] Forgot Password (Kirim OTP)
+export const forgotPassword = async (email: string) => {
+  const response = await api.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+// [RECOVERY] Verify Reset OTP (Dapat Reset Token)
+export const verifyResetOtp = async (email: string, otp: string) => {
+  const response = await api.post('/auth/verify-reset-otp', { email, otp });
+  return response.data; // Harus return { data: { resetToken: '...' } }
+};
+
+// [RECOVERY] Reset Password (Final)
+export const resetPassword = async (resetToken: string, newPassword: string) => {
+  const response = await api.post('/auth/reset-password', { resetToken, newPassword });
   return response.data;
 };
 
