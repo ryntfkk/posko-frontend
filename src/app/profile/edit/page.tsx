@@ -43,10 +43,20 @@ export default function EditProfilePage() {
         const profile = res.data.profile;
         setUser(profile);
 
+        // Logic Sanitasi Nomor HP untuk Tampilan (Hapus prefix 62/0/+62 karena sudah ada di UI)
+        let displayPhone = profile.phoneNumber || '';
+        if (displayPhone.startsWith('+62')) {
+          displayPhone = displayPhone.slice(3);
+        } else if (displayPhone.startsWith('62')) {
+          displayPhone = displayPhone.slice(2);
+        } else if (displayPhone.startsWith('0')) {
+          displayPhone = displayPhone.slice(1);
+        }
+
         // Pre-fill form
         setFormData({
           fullName: profile.fullName || '',
-          phoneNumber: profile.phoneNumber || '',
+          phoneNumber: displayPhone,
           // Handle tanggal agar sesuai format input type="date" (YYYY-MM-DD)
           birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
           gender: (profile as any).gender || '',
@@ -114,14 +124,18 @@ export default function EditProfilePage() {
       return false;
     }
 
-    // Validasi Nomor HP (Format dasar Indonesia)
+    // Validasi Nomor HP (Hanya cek panjang karena prefix diurus UI)
     if (formData.phoneNumber && formData.phoneNumber.trim().length > 0) {
-      // Regex sederhana untuk +62 atau 08
-      const phoneRegex = /^(\+62|0)[0-9]{8,14}$/;
-      if (!phoneRegex.test(formData.phoneNumber.replace(/\s/g, ''))) {
-        setErrorMessage('Format nomor HP tidak valid. Gunakan format 08xx atau +62xx');
-        return false;
-      }
+       // Cek apakah user mengetik huruf
+       if (!/^\d+$/.test(formData.phoneNumber)) {
+          setErrorMessage('Nomor HP hanya boleh berisi angka');
+          return false;
+       }
+       // Cek panjang minimal (misal 9 digit setelah kode negara)
+       if (formData.phoneNumber.length < 9) {
+          setErrorMessage('Nomor HP terlalu pendek');
+          return false;
+       }
     }
 
     // Validasi Tanggal Lahir (Minimal 13 tahun)
@@ -179,6 +193,10 @@ export default function EditProfilePage() {
       }
 
       // STEP 2: Update Profile Data ke Backend
+      // Kita kirim raw input, backend mungkin tidak melakukan formatting '62' di updateProfile
+      // tapi UI meminta disamakan dengan Register. 
+      // Untuk keamanan data, kita kirim apa adanya atau bisa kita tambahkan '62' manual jika diperlukan.
+      // Di sini saya mengikuti pola Register yang mengirim input user.
       const payload = {
         fullName: formData.fullName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
@@ -335,15 +353,20 @@ export default function EditProfilePage() {
             {/* Nomor HP */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nomor WhatsApp</label>
-              <input 
-                type="tel"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                placeholder="Contoh: 08123456789"
-                disabled={isSaving}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100"
-              />
+              {/* UI Diperbarui Menyesuaikan Halaman Register */}
+              <div className="flex gap-3">
+                  <span className="flex items-center justify-center bg-gray-100 border border-gray-200 rounded-xl px-3 text-sm font-bold text-gray-600">+62</span>
+                  <input 
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    placeholder="812xxxxxxx"
+                    maxLength={15}
+                    disabled={isSaving}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100"
+                  />
+              </div>
             </div>
 
             {/* Tanggal Lahir & Gender Grid */}

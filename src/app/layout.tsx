@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body
-        className={`${inter.className} ${inter.variable} antialiased bg-gray-50 text-gray-900 pb-24 lg:pb-0`} 
+        className={`${inter.className} ${inter.variable} antialiased bg-gray-50 text-gray-900 pb-0`} 
         suppressHydrationWarning={true}
       >
         <QueryProvider>

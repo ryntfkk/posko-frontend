@@ -34,15 +34,13 @@ export default function ProfilePage() {
   };
 
   const handleRegisterProvider = () => {
-    // Aksi untuk user yang belum jadi mitra
-    alert("Silakan kunjungi aplikasi Mitra kami untuk mendaftar.");
+    // Aksi untuk user yang belum jadi mitra -> Redirect ke Website Mitra
+    window.location.href = 'https://provider.poskojasa.com/';
   };
 
   const handleSwitchToProvider = () => {
-    // Aksi untuk user yang SUDAH jadi mitra
-    // Nanti arahkan ke dashboard mitra atau halaman switch role
-    alert("Beralih ke Mode Mitra...");
-    // router.push('/provider/dashboard'); 
+    // Aksi untuk user yang SUDAH jadi mitra -> Redirect ke Dashboard Mitra
+    window.location.href = 'https://provider.poskojasa.com/';
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Memuat...</div>;

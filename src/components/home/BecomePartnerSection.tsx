@@ -1,17 +1,31 @@
 // src/components/home/BecomePartnerSection.tsx
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function BecomePartnerSection() {
   const { language } = useLanguage();
+  const router = useRouter();
 
   const title = language === 'id' ? 'Gabung Jadi Mitra' : 'Become a Partner';
   const subtitle = language === 'id' 
     ? 'Dapat penghasilan tambahan!' 
     : 'Earn extra income!';
   const buttonText = language === 'id' ? 'Daftar' : 'Join';
+
+  const handlePartnerClick = () => {
+    // Cek apakah user sudah login (ada token)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('posko_token') : null;
+
+    if (token) {
+      // Jika sudah login, arahkan ke website provider (dashboard mitra)
+      window.location.href = 'https://provider.poskojasa.com/';
+    } else {
+      // Jika belum login, arahkan ke halaman register
+      router.push('/register?role=provider');
+    }
+  };
 
   return (
     <section className="px-4 lg:px-8 mt-3 lg:mt-4 max-w-7xl mx-auto">
@@ -36,12 +50,12 @@ export default function BecomePartnerSection() {
 
         {/* Action Button (Kecil & Rapi) */}
         <div className="relative z-10 shrink-0">
-          <Link 
-            href="/register?role=provider" 
+          <button 
+            onClick={handlePartnerClick}
             className="block bg-white text-red-700 hover:bg-red-50 font-bold text-[10px] lg:text-xs px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg transition-all shadow-sm active:scale-95"
           >
             {buttonText}
-          </Link>
+          </button>
         </div>
       </div>
     </section>
