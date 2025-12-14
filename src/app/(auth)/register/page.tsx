@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic'; 
-import { registerUser, verifyOtp, resendOtp } from '@/features/auth/api'; // [UPDATED] Import verifyOtp
+import { registerUser, preRegister, verifyPreOtp } from '@/features/auth/api';
 import { RegisterPayload } from '@/features/auth/types';
 import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
 
@@ -35,26 +35,27 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
-  // [NEW] State untuk OTP
+  // State untuk OTP Flow
   const [otpMode, setOtpMode] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpTimer, setOtpTimer] = useState(0);
+  const [verificationToken, setVerificationToken] = useState('');
+  
+  // Status Validasi
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'verified'>('idle');
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'sending' | 'verified'>('idle');
 
-  // State untuk Show/Hide Password
+  // State UI
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // State untuk Password Strength
+  // Password Strength
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
     hasMinLength: false,
     hasLowercase: false,
     hasUppercase: false,
     hasNumber: false,
   });
-
-  // Status Validasi Dummy (untuk demo OTP)
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'verified'>('idle');
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'sending' | 'verified'>('idle');
 
   // Data Wilayah
   const [provinces, setProvinces] = useState<Region[]>([]);
@@ -86,7 +87,7 @@ export default function RegisterPage() {
     longitude: null as number | null,
   });
 
-  // Load Provinsi saat mount (Menggunakan API Internal)
+  // Load Provinsi saat mount
   useEffect(() => {
     fetchProvinces()
       .then(res => {
@@ -97,7 +98,7 @@ export default function RegisterPage() {
       .catch(console.error);
   }, []);
 
-  // [NEW] Effect untuk Timer OTP
+  // Effect untuk Timer OTP
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (otpTimer > 0) {
@@ -108,7 +109,7 @@ export default function RegisterPage() {
     return () => clearInterval(interval);
   }, [otpTimer]);
 
-  // Check password strength saat user mengetik
+  // Check password strength
   const checkPasswordStrength = (password: string) => {
     setPasswordStrength({
       hasMinLength: password.length >= 8,
@@ -118,7 +119,6 @@ export default function RegisterPage() {
     });
   };
 
-  // Hitung skor password untuk progress bar
   const getPasswordScore = (): number => {
     const { hasMinLength, hasLowercase, hasUppercase, hasNumber } = passwordStrength;
     let score = 0;
@@ -129,7 +129,6 @@ export default function RegisterPage() {
     return score;
   };
 
-  // Warna berdasarkan skor password
   const getPasswordScoreColor = (): string => {
     const score = getPasswordScore();
     if (score === 0) return 'bg-gray-200';
@@ -139,7 +138,6 @@ export default function RegisterPage() {
     return 'bg-green-500';
   };
 
-  // Label kekuatan password
   const getPasswordStrengthLabel = (): string => {
     const score = getPasswordScore();
     if (score === 0) return '';
@@ -149,7 +147,7 @@ export default function RegisterPage() {
     return 'Kuat';
   };
 
-  // Handler Wilayah (Menggunakan fetchRegionChildren)
+  // Handler Wilayah
   const handleRegionChange = (type: 'province' | 'city' | 'district' | 'village', e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     const index = e.target.selectedIndex;
@@ -160,8 +158,8 @@ export default function RegisterPage() {
       setSelectedCityId(''); 
       setSelectedDistrictId(''); 
       setSelectedVillageId('');
-      setCities([]);
-      setDistricts([]);
+      setCities([]); 
+      setDistricts([]); 
       setVillages([]);
       setFormData(prev => ({ 
         ...prev, 
@@ -184,7 +182,7 @@ export default function RegisterPage() {
       setSelectedCityId(id); 
       setSelectedDistrictId(''); 
       setSelectedVillageId('');
-      setDistricts([]);
+      setDistricts([]); 
       setVillages([]);
       setFormData(prev => ({ 
         ...prev, 
@@ -223,7 +221,6 @@ export default function RegisterPage() {
     }
     else if (type === 'village') {
       setSelectedVillageId(id);
-      // Logic dummy postal code: jika id valid, ambil substring untuk simulasi
       const dummyPostalCode = id ? `1${id.substring(0, 4)}` : ''; 
       setFormData(prev => ({ 
         ...prev, 
@@ -233,12 +230,10 @@ export default function RegisterPage() {
     }
   };
 
-  // Handler change dengan pengecekan password
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Cek password strength saat mengetik password
     if (name === 'password') {
       checkPasswordStrength(value);
     }
@@ -248,9 +243,8 @@ export default function RegisterPage() {
     setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
   };
 
-  // Handler Get Current Location
   const handleGetCurrentLocation = () => {
-    if (! navigator.geolocation) {
+    if (!navigator.geolocation) {
       alert("Browser Anda tidak mendukung Geolocation.");
       return;
     }
@@ -268,16 +262,66 @@ export default function RegisterPage() {
     );
   };
 
-  // Validasi Email (Dummy untuk demo)
-  const handleVerifyEmail = () => {
-    if (!formData.email.includes('@') || !formData.email.includes('.')) {
+  // Step 1: Request OTP Email
+  const handleRequestOtp = async () => {
+    if (!formData.email || !formData.email.includes('@')) {
       return alert('Masukkan email yang valid');
     }
-    setEmailStatus('sending');
-    setTimeout(() => setEmailStatus('verified'), 1500); 
+    
+    setIsLoading(true);
+    try {
+      await preRegister(formData.email);
+      setOtpMode(true);
+      setOtpTimer(60);
+      setErrorMsg('');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mengirim OTP.';
+      setErrorMsg(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Validasi Phone (Dummy untuk demo)
+  // Step 1: Verify OTP & Get Token
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      return alert('Kode OTP harus 6 digit');
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await verifyPreOtp(formData.email, otpCode);
+      setVerificationToken(res.data.verificationToken); 
+      setEmailStatus('verified'); 
+      setOtpMode(false); 
+      setErrorMsg('');
+      alert('Email berhasil diverifikasi! Silakan lengkapi password.');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Kode OTP salah.';
+      setErrorMsg(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (otpTimer > 0) return;
+    
+    setIsLoading(true);
+    try {
+      await preRegister(formData.email);
+      setOtpTimer(60);
+      alert('Kode OTP baru telah dikirim.');
+    } catch (error) {
+      console.error(error);
+      alert('Gagal mengirim ulang OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Validasi Dummy Phone
   const handleVerifyPhone = () => {
     if (formData.phoneNumber.length < 10) {
       return alert('Nomor HP minimal 10 digit');
@@ -286,37 +330,24 @@ export default function RegisterPage() {
     setTimeout(() => setPhoneStatus('verified'), 1500);
   };
 
-  // Validasi per step yang lebih lengkap
   const validateStep = (): string => {
     setErrorMsg('');
     
     if (step === 1) {
-      // Validasi Email
-      if (!formData.email) {
-        return 'Email wajib diisi.';
-      }
-      if (!formData.email.includes('@') || !formData.email.includes('.')) {
-        return 'Format email tidak valid.';
+      if (emailStatus !== 'verified') {
+        return 'Silakan verifikasi email terlebih dahulu.';
       }
       
-      // Validasi Password
       if (!formData.password) {
         return 'Password wajib diisi.';
       }
       
-      // Validasi Password Strength
       const { hasMinLength, hasLowercase, hasUppercase, hasNumber } = passwordStrength;
-      if (! hasMinLength || !hasLowercase || !hasUppercase || !hasNumber) {
-        const missing: string[] = [];
-        if (!hasMinLength) missing.push('minimal 8 karakter');
-        if (! hasLowercase) missing.push('huruf kecil');
-        if (!hasUppercase) missing.push('huruf besar');
-        if (!hasNumber) missing.push('angka');
-        return `Password harus mengandung: ${missing.join(', ')}.`;
+      if (!hasMinLength || !hasLowercase || !hasUppercase || !hasNumber) {
+        return 'Password belum memenuhi syarat kekuatan.';
       }
       
-      // Validasi Confirm Password
-      if (! formData.confirmPassword) {
+      if (!formData.confirmPassword) {
         return 'Konfirmasi password wajib diisi.';
       }
       if (formData.password !== formData.confirmPassword) {
@@ -325,7 +356,6 @@ export default function RegisterPage() {
     }
     
     if (step === 2) {
-      // Validasi Nama Lengkap
       if (!formData.fullName) {
         return 'Nama lengkap wajib diisi.';
       }
@@ -333,30 +363,19 @@ export default function RegisterPage() {
         return 'Nama lengkap minimal 3 karakter.';
       }
       
-      // Validasi Tanggal Lahir
       if (!formData.birthDate) {
         return 'Tanggal lahir wajib diisi.';
       }
-      const birthDateObj = new Date(formData.birthDate);
-      const today = new Date();
-      if (birthDateObj >= today) {
-        return 'Tanggal lahir tidak valid.';
-      }
       
-      // Validasi Gender
       if (!formData.gender) {
         return 'Jenis kelamin wajib dipilih.';
       }
       
-      // Validasi Nomor Telepon
-      if (! formData.phoneNumber) {
+      if (!formData.phoneNumber) {
         return 'Nomor telepon wajib diisi.';
       }
       if (formData.phoneNumber.length < 10 || formData.phoneNumber.length > 15) {
         return 'Nomor telepon harus 10-15 digit.';
-      }
-      if (!/^[0-9]+$/.test(formData.phoneNumber)) {
-        return 'Nomor telepon hanya boleh berisi angka.';
       }
     }
     
@@ -378,33 +397,24 @@ export default function RegisterPage() {
     setStep(prev => prev - 1);
   };
 
-  // [UPDATED] Submit sekarang mengirim data dan mengaktifkan mode OTP
+  // Final Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     
-    // Validasi koordinat
     if (formData.latitude === null || formData.longitude === null) {
       setErrorMsg('Pilih lokasi pada peta dengan mengetuk titik rumah Anda.');
       return;
     }
     
-    // Validasi alamat wilayah
-    if (!formData.addressProvince) {
-      setErrorMsg('Pilih provinsi terlebih dahulu.');
-      return;
-    }
-    if (!formData.addressCity) {
-      setErrorMsg('Pilih kota/kabupaten terlebih dahulu.');
-      return;
-    }
-    if (!formData.addressDistrict) {
-      setErrorMsg('Pilih kecamatan terlebih dahulu.');
-      return;
-    }
-    if (!formData.addressVillage) {
-      setErrorMsg('Pilih kelurahan/desa terlebih dahulu.');
-      return;
+    if (!formData.addressProvince) return setErrorMsg('Pilih provinsi terlebih dahulu.');
+    if (!formData.addressCity) return setErrorMsg('Pilih kota/kabupaten terlebih dahulu.');
+    if (!formData.addressDistrict) return setErrorMsg('Pilih kecamatan terlebih dahulu.');
+    if (!formData.addressVillage) return setErrorMsg('Pilih kelurahan/desa terlebih dahulu.');
+
+    if (!verificationToken) {
+        setErrorMsg('Sesi verifikasi email kadaluarsa. Silakan refresh dan ulangi.');
+        return;
     }
 
     setIsLoading(true);
@@ -418,6 +428,7 @@ export default function RegisterPage() {
         birthDate: formData.birthDate,
         gender: formData.gender,
         roles: ['customer'],
+        verificationToken,
         address: {
           province: formData.addressProvince,
           district: formData.addressDistrict,
@@ -434,53 +445,12 @@ export default function RegisterPage() {
       
       await registerUser(payload);
       
-      // [NEW] Jika sukses, jangan redirect, tapi tampilkan OTP
-      setOtpMode(true);
-      setOtpTimer(60); // Set timer 60 detik
-      setIsLoading(false);
-      
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      const errorMessage = err.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
-      setErrorMsg(errorMessage);
-      setIsLoading(false);
-    }
-  };
-
-  // [NEW] Handler Verifikasi OTP
-  const handleVerifyOtp = async () => {
-    if (otpCode.length !== 6) {
-      alert('Kode OTP harus 6 digit');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await verifyOtp(formData.email, otpCode);
-      // Sukses, redirect ke home
       router.push('/');
       router.refresh();
-    } catch (error) {
-      const err = error as { response?: { data?: { message?: string } } };
-      const errorMessage = err.response?.data?.message || 'Kode OTP salah atau kadaluarsa.';
-      alert(errorMessage);
-      setIsLoading(false);
-    }
-  };
-
-  // [NEW] Handler Resend OTP
-  const handleResendOtp = async () => {
-    if (otpTimer > 0) return;
-    
-    setIsLoading(true);
-    try {
-      await resendOtp(formData.email);
-      setOtpTimer(60);
-      alert('Kode OTP baru telah dikirim ke email Anda.');
-    } catch (error) {
-      console.error(error);
-      alert('Gagal mengirim ulang OTP.');
-    } finally {
+      
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
+      setErrorMsg(msg);
       setIsLoading(false);
     }
   };
@@ -491,11 +461,20 @@ export default function RegisterPage() {
       {/* Container Utama */}
       <div className="bg-white w-full max-w-5xl lg:rounded-3xl lg:shadow-2xl overflow-hidden flex flex-col lg:flex-row min-h-screen lg:min-h-[600px] relative">
           
-        {/* [NEW] OTP MODAL OVERLAY */}
+        {/* OTP MODAL OVERLAY */}
         {otpMode && (
           <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-fadeIn">
             <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 text-center relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
+              
+              <button 
+                onClick={() => setOtpMode(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
               
               <div className="mb-6 flex justify-center">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-600">
@@ -511,12 +490,17 @@ export default function RegisterPage() {
                 <span className="font-bold text-gray-800">{formData.email}</span>
               </p>
 
+              {errorMsg && (
+                 <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg font-medium">
+                    {errorMsg}
+                 </div>
+              )}
+
               <div className="mb-6">
                 <input 
                   type="text" 
                   value={otpCode}
                   onChange={(e) => {
-                    // Hanya angka dan max 6 digit
                     if (/^\d*$/.test(e.target.value) && e.target.value.length <= 6) {
                       setOtpCode(e.target.value);
                     }
@@ -532,7 +516,7 @@ export default function RegisterPage() {
                 disabled={isLoading || otpCode.length !== 6}
                 className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
               >
-                {isLoading ? 'Memverifikasi...' : 'Verifikasi Akun'}
+                {isLoading ? 'Memverifikasi...' : 'Verifikasi Kode'}
               </button>
 
               <div className="text-sm text-gray-500">
@@ -575,7 +559,7 @@ export default function RegisterPage() {
               <div 
                 key={num} 
                 className={`flex items-center gap-4 transition-all duration-500 ${
-                  step === num ?  'opacity-100 translate-x-0' : 'opacity-40 translate-x-0'
+                  step === num ? 'opacity-100 translate-x-0' : 'opacity-40 translate-x-0'
                 }`}
               >
                 <div 
@@ -598,7 +582,7 @@ export default function RegisterPage() {
                     Langkah {num}
                   </span>
                   <span className="font-bold text-base leading-none">
-                    {num === 1 ?  'Akun Baru' : num === 2 ?  'Data Diri' : 'Alamat Lengkap'}
+                    {num === 1 ? 'Akun Baru' : num === 2 ? 'Data Diri' : 'Alamat Lengkap'}
                   </span>
                 </div>
               </div>
@@ -649,23 +633,23 @@ export default function RegisterPage() {
                 </p>
               </div>
 
+              {/* Error Message (Global, except inside OTP modal) */}
+              {errorMsg && !otpMode && (
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg font-medium animate-pulse flex items-center gap-2">
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                  
-                {/* Error Message */}
-                {errorMsg && (
-                  <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg font-medium animate-pulse flex items-center gap-2">
-                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-                    </svg>
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
 
                 {/* ========== STEP 1: ACCOUNT ========== */}
                 {step === 1 && (
                   <div className="space-y-6 animate-fadeIn">
                     
-                    {/* Email */}
+                    {/* Email Input & OTP Trigger */}
                     <div className="flex flex-col gap-2">
                       <label className="label-text">Email Address</label>
                       <div className="flex gap-3">
@@ -675,200 +659,123 @@ export default function RegisterPage() {
                           value={formData.email} 
                           onChange={handleChange} 
                           placeholder="contoh@email.com" 
-                          className="input-field flex-1" 
-                          readOnly={emailStatus === 'verified'}
+                          className="input-field flex-1 disabled:bg-green-50 disabled:text-green-800 disabled:border-green-200 disabled:opacity-100" 
+                          disabled={emailStatus === 'verified'} 
                           autoComplete="email"
                         />
-                        <button 
-                          type="button" 
-                          onClick={handleVerifyEmail} 
-                          disabled={emailStatus !== 'idle' || ! formData.email} 
-                          className={`px-5 rounded-xl text-xs font-bold transition-all border ${
-                            emailStatus === 'verified' 
-                              ? 'bg-green-50 text-green-600 border-green-200' 
-                              : 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 shadow-md'
-                          } disabled:bg-gray-200 disabled:text-gray-400 disabled:border-gray-200 disabled:shadow-none disabled:translate-y-0`}
-                        >
-                          {emailStatus === 'verified' ? '✓ Terverifikasi' : emailStatus === 'sending' ? 'Memeriksa...' : 'Cek Email'}
-                        </button>
+                        
+                        {emailStatus === 'verified' ? (
+                          <div className="px-4 flex items-center justify-center bg-green-100 text-green-700 rounded-xl font-bold text-sm border border-green-200 min-w-[100px]">
+                             ✓ Verified
+                          </div>
+                        ) : (
+                          <button 
+                            type="button" 
+                            onClick={handleRequestOtp} 
+                            disabled={isLoading || !formData.email} 
+                            className="px-5 rounded-xl text-xs font-bold bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-md hover:-translate-y-0.5 min-w-[100px]"
+                          >
+                            {isLoading ? '...' : 'Kirim OTP'}
+                          </button>
+                        )}
                       </div>
+                      <p className="text-[10px] text-gray-400 leading-relaxed">
+                        Kami akan mengirimkan kode verifikasi 6 digit ke email ini. Pastikan email aktif.
+                      </p>
                     </div>
                     
-                    {/* Password dengan Toggle */}
-                    <div className="flex flex-col gap-2">
-                      <label className="label-text">Password</label>
-                      <div className="relative">
-                        <input 
-                          type={showPassword ? "text" : "password"} 
-                          name="password" 
-                          value={formData.password} 
-                          onChange={handleChange} 
-                          className="input-field pr-12" 
-                          placeholder="Minimal 8 karakter"
-                          autoComplete="new-password"
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => setShowPassword(! showPassword)}
-                          className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                          tabIndex={-1}
-                        >
-                          {showPassword ? (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
+                    {/* Password Section - Only Visible AFTER Email Verification */}
+                    {emailStatus === 'verified' && (
+                      <div className="animate-fadeIn space-y-6 border-t border-gray-100 pt-6">
+                        
+                        {/* Password */}
+                        <div className="flex flex-col gap-2">
+                          <label className="label-text">Password</label>
+                          <div className="relative">
+                            <input 
+                              type={showPassword ? "text" : "password"} 
+                              name="password" 
+                              value={formData.password} 
+                              onChange={handleChange} 
+                              className="input-field pr-12" 
+                              placeholder="Minimal 8 karakter"
+                              autoComplete="new-password"
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                              tabIndex={-1}
+                            >
+                              {showPassword ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          
+                          {/* Password Strength Indicator */}
+                          {formData.password && (
+                            <div className="mt-2 space-y-1">
+                              <div className="flex gap-1 h-1.5">
+                                {[1, 2, 3, 4].map((i) => (
+                                  <div 
+                                    key={i} 
+                                    className={`flex-1 rounded-full transition-colors duration-300 ${
+                                      getPasswordScore() >= i ? getPasswordScoreColor() : 'bg-gray-200'
+                                    }`}
+                                  ></div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-gray-500 font-medium">
+                                  Kekuatan: {getPasswordStrengthLabel()}
+                                </span>
+                              </div>
+                            </div>
                           )}
-                        </button>
-                      </div>
-                      
-                      {/* Password Strength Indicator */}
-                      {formData.password && (
-                        <div className="mt-2 space-y-2">
-                          {/* Progress Bar */}
-                          <div className="flex gap-1">
-                            {[1, 2, 3, 4].map((i) => (
-                              <div 
-                                key={i}
-                                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                                  getPasswordScore() >= i ? getPasswordScoreColor() : 'bg-gray-200'
-                                }`}
-                              ></div>
-                            ))}
-                          </div>
-                          
-                          {/* Label Kekuatan */}
-                          <div className="flex justify-between items-center">
-                            <span className={`text-xs font-medium ${
-                              getPasswordScore() === 4 ? 'text-green-600' :
-                              getPasswordScore() === 3 ? 'text-yellow-600' :
-                              getPasswordScore() === 2 ? 'text-orange-600' :
-                              getPasswordScore() === 1 ? 'text-red-600' : 'text-gray-400'
-                            }`}>
-                              {getPasswordStrengthLabel() && `Kekuatan: ${getPasswordStrengthLabel()}`}
-                            </span>
-                          </div>
-                          
-                          {/* Detail Requirements */}
-                          <div className="flex flex-wrap gap-x-3 gap-y-1">
-                            <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength.hasMinLength ? 'text-green-600' : 'text-gray-400'
-                            }`}>
-                              {passwordStrength.hasMinLength ? (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
-                                </svg>
-                              )}
-                              8+ karakter
-                            </span>
-                            <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength.hasLowercase ? 'text-green-600' : 'text-gray-400'
-                            }`}>
-                              {passwordStrength.hasLowercase ? (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
-                                </svg>
-                              )}
-                              Huruf kecil
-                            </span>
-                            <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength.hasUppercase ?  'text-green-600' : 'text-gray-400'
-                            }`}>
-                              {passwordStrength.hasUppercase ?  (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
-                                </svg>
-                              )}
-                              Huruf besar
-                            </span>
-                            <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength.hasNumber ? 'text-green-600' : 'text-gray-400'
-                            }`}>
-                              {passwordStrength.hasNumber ?  (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                </svg>
-                              ) : (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
-                                </svg>
-                              )}
-                              Angka
-                            </span>
-                          </div>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Confirm Password dengan Toggle */}
-                    <div className="flex flex-col gap-2">
-                      <label className="label-text">Ulangi Password</label>
-                      <div className="relative">
-                        <input 
-                          type={showConfirmPassword ? "text" : "password"} 
-                          name="confirmPassword" 
-                          value={formData.confirmPassword} 
-                          onChange={handleChange} 
-                          className="input-field pr-12" 
-                          placeholder="Konfirmasi password"
-                          autoComplete="new-password"
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                          tabIndex={-1}
-                        >
-                          {showConfirmPassword ? (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                      
-                      {/* Password Match Indicator */}
-                      {formData.confirmPassword && (
-                        <div className="flex items-center gap-1 mt-1">
-                          {formData.password === formData.confirmPassword ? (
-                            <>
-                              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span className="text-xs text-green-600 font-medium">Password cocok</span>
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                              <span className="text-xs text-red-600 font-medium">Password tidak cocok</span>
-                            </>
-                          )}
+                        {/* Confirm Password */}
+                        <div className="flex flex-col gap-2">
+                          <label className="label-text">Ulangi Password</label>
+                          <div className="relative">
+                            <input 
+                              type={showConfirmPassword ? "text" : "password"} 
+                              name="confirmPassword" 
+                              value={formData.confirmPassword} 
+                              onChange={handleChange} 
+                              className="input-field pr-12" 
+                              placeholder="Konfirmasi password"
+                              autoComplete="new-password"
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                              tabIndex={-1}
+                            >
+                              {showConfirmPassword ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -903,11 +810,6 @@ export default function RegisterPage() {
                             className="input-field pr-10"
                             max={new Date().toISOString().split('T')[0]}
                           />
-                          <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
@@ -947,18 +849,6 @@ export default function RegisterPage() {
                           maxLength={15}
                           autoComplete="tel"
                         />
-                        <button 
-                          type="button" 
-                          onClick={handleVerifyPhone} 
-                          disabled={phoneStatus !== 'idle' || ! formData.phoneNumber} 
-                          className={`px-5 rounded-xl text-xs font-bold transition-colors ${
-                            phoneStatus === 'verified' 
-                              ? 'bg-green-50 text-green-600 border border-green-200' 
-                              : 'bg-gray-900 text-white hover:bg-gray-800'
-                          } disabled:bg-gray-200 disabled:text-gray-400`}
-                        >
-                          {phoneStatus === 'verified' ? '✓' : phoneStatus === 'sending' ? '...' : 'Kirim OTP'}
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -966,10 +856,7 @@ export default function RegisterPage() {
 
                 {/* ========== STEP 3: ADDRESS & MAP ========== */}
                 {step === 3 && (
-                  <div className="animate-fadeIn flex flex-col gap-8">
-                      
-                    {/* Layout Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                  <div className="animate-fadeIn grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                         
                       {/* Bagian Form Wilayah */}
                       <div className="space-y-5 order-2 lg:order-1">
@@ -1113,12 +1000,7 @@ export default function RegisterPage() {
                           </svg>
                           Gunakan Lokasi Saya Sekarang
                         </button>
-                        
-                        <p className="text-[10px] text-gray-400 leading-normal">
-                          *Ketuk lokasi anda di peta dan pin akan terpasang untuk memudahkan pencarian teknisi terdekat.
-                        </p>
                       </div>
-                    </div>
                   </div>
                 )}
               </form>
@@ -1185,7 +1067,6 @@ export default function RegisterPage() {
 
         /* --- FIX KHUSUS TANGGAL (SAFARI iOS & CHROME) --- */
         
-        /* 1.Reset tampilan default iOS */
         input[type="date"] {
           -webkit-appearance: none;
           appearance: none;
@@ -1194,14 +1075,12 @@ export default function RegisterPage() {
           width: 100%;
         }
 
-        /* 2. Fix text invisible/kosong di iOS */
         input[type="date"]::-webkit-date-and-time-value {
           text-align: left;
           min-height: 1.2em;
           display: block; 
         }
 
-        /* 3. Sembunyikan icon bawaan browser */
         input[type="date"]::-webkit-calendar-picker-indicator {
           position: absolute;
           top: 0;

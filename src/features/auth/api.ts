@@ -1,5 +1,12 @@
 import api from '@/lib/axios';
-import { AuthResponse, LoginPayload, ProfileResponse, RegisterPayload } from './types';
+import { 
+  AuthResponse, 
+  LoginPayload, 
+  ProfileResponse, 
+  RegisterPayload,
+  PreRegisterResponse, // [NEW]
+  VerifyPreOtpResponse // [NEW]
+} from './types';
 
 // [HELPER] Cookie Management
 function setAuthCookie(token: string) {
@@ -40,6 +47,22 @@ function safeRemoveToken(): void {
   }
 }
 
+// [NEW] Pre-Register: Langkah 1 (Kirim OTP ke Email)
+export const preRegister = async (email: string) => {
+  const response = await api.post<PreRegisterResponse>('/auth/pre-register', { email });
+  return response.data;
+};
+
+// [NEW] Verify Pre-OTP: Langkah 2 (Validasi OTP & Dapat Token)
+export const verifyPreOtp = async (email: string, otp: string) => {
+  const response = await api.post<VerifyPreOtpResponse>('/auth/verify-pre-otp', { email, otp });
+  
+  // Note: Kita tidak setToken disini karena user belum sepenuhnya terdaftar (belum isi data diri).
+  // Token yang didapat adalah 'verificationToken' untuk pass ke registerUser.
+  
+  return response.data;
+};
+
 export const loginUser = async (credentials: LoginPayload) => {
   const response = await api.post<AuthResponse>('/auth/login', credentials);
   
@@ -56,15 +79,23 @@ export const loginUser = async (credentials: LoginPayload) => {
 };
 
 export const registerUser = async (payload: RegisterPayload) => {
+  // Payload sekarang wajib mengandung verificationToken
   const response = await api.post<AuthResponse>('/auth/register', payload);
   
-  // [NOTE] Di backend baru, register tidak langsung return token, 
-  // jadi kita tidak setToken disini, melainkan di verifyOtp
+  // Karena registrasi sekarang langsung auto-login (verified di awal), kita simpan token
+  if (response.data.data.tokens) {
+    safeSetToken(response.data.data.tokens.accessToken);
+    try {
+      localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
+    } catch (e) {
+      console.error('Failed to save refresh token:', e);
+    }
+  }
   
   return response.data;
 };
 
-// [NEW] Fungsi Verifikasi OTP
+// [DEPRECATED] Fungsi ini mungkin masih dipakai di page lain, biarkan dulu tapi tidak dipakai di flow baru
 export const verifyOtp = async (email: string, otp: string) => {
   const response = await api.post<AuthResponse>('/auth/verify-otp', { email, otp });
   
@@ -80,7 +111,7 @@ export const verifyOtp = async (email: string, otp: string) => {
   return response.data;
 };
 
-// [NEW] Fungsi Kirim Ulang OTP
+// [DEPRECATED] Diganti preRegister
 export const resendOtp = async (email: string) => {
   const response = await api.post('/auth/resend-otp', { email });
   return response.data;
@@ -130,7 +161,6 @@ export const updateProfile = async (data: any) => {
     return response.data;
 };
 
-// [NEW] Added missing exports for Role Management
 export const switchRole = async (role: string) => {
   const response = await api.post('/auth/switch-role', { role });
   return response.data;

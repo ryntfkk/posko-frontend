@@ -1,79 +1,82 @@
-// src/features/auth/types.ts
-export type Role = 'customer' | 'provider' | 'admin';
-
-export interface Address {
-  province: string;
-  district: string;
-  city: string;
-  village: string;
-  postalCode: string;
-  detail: string;
-}
-
-export interface GeoLocation {
-  type: 'Point';
-  coordinates: number[];
-}
-// Interface untuk Jadwal (disalin struktur minimalnya agar User type mengenalinya)
-interface UserScheduleDay {
-  dayIndex: number;
-  dayName: string;
-  isOpen: boolean;
-  start: string;
-  end: string;
-}
-
 export interface User {
-  _id: string;    
-  userId: string;  
+  _id: string;
   fullName: string;
   email: string;
-  roles: Role[];
-  activeRole: Role;
+  roles: string[];
+  activeRole: string;
   phoneNumber?: string;
-  birthDate?: string; 
-  address?: Address;
-  location?: GeoLocation; 
   profilePictureUrl?: string;
-  balance?: number; 
-  schedule?: UserScheduleDay[];
+  balance?: number;
+  providerStatus?: string; // [NEW] Status verifikasi provider
 }
 
-export interface Tokens {
+export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
 }
 
 export interface AuthResponse {
-  messageKey: string;
   message: string;
   data: {
-    tokens: Tokens;
-    profile: User;
-  };
-}
-
-export interface ProfileResponse {
-  messageKey: string;
-  message: string;
-  data: {
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    };
     profile: User;
   };
 }
 
 export interface LoginPayload {
   email: string;
-  password: string;
+  password?: string;
 }
 
 export interface RegisterPayload {
   fullName: string;
   email: string;
-  password: string;
+  password?: string;
   phoneNumber: string;
-  birthDate: string;
-  gender: string;
-  roles: Role[];
-  address: Address;
-  location?: GeoLocation;
+  birthDate?: string; // YYYY-MM-DD
+  gender?: string;
+  roles?: string[];
+  verificationToken: string; // [NEW] Wajib ada untuk registrasi final
+  address: {
+    province: string;
+    city: string;
+    district: string;
+    village: string;
+    postalCode: string;
+    detail: string;
+  };
+  location: {
+    type: string;
+    coordinates: number[]; // [longitude, latitude]
+  };
+  profilePictureUrl?: string;
+  bannerPictureUrl?: string;
+  bio?: string;
+}
+
+export interface ProfileResponse {
+  message: string;
+  data: {
+    profile: User;
+  };
+}
+
+// [NEW] Tipe untuk Pre-Register (Kirim OTP)
+export interface PreRegisterResponse {
+  message: string;
+  data: {
+    email: string;
+  };
+}
+
+// [NEW] Tipe untuk Verify Pre-OTP (Dapat Token)
+export interface VerifyPreOtpResponse {
+  message: string;
+  data: {
+    email: string;
+    verificationToken: string;
+  };
 }
