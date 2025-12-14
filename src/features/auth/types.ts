@@ -1,3 +1,4 @@
+// src/features/auth/types.ts
 export interface User {
   _id: string;
   fullName: string;
@@ -39,7 +40,8 @@ export interface RegisterPayload {
   birthDate?: string; // YYYY-MM-DD
   gender?: string;
   roles?: string[];
-  verificationToken: string; // [NEW] Wajib ada untuk registrasi final
+  verificationToken: string; // [REQUIRED] Token Email
+  phoneVerificationToken: string; // [NEW] Token WhatsApp
   address: {
     province: string;
     city: string;
@@ -64,7 +66,7 @@ export interface ProfileResponse {
   };
 }
 
-// [NEW] Tipe untuk Pre-Register (Kirim OTP)
+// [NEW] Tipe untuk Pre-Register (Kirim OTP Email)
 export interface PreRegisterResponse {
   message: string;
   data: {
@@ -72,11 +74,28 @@ export interface PreRegisterResponse {
   };
 }
 
-// [NEW] Tipe untuk Verify Pre-OTP (Dapat Token)
+// [NEW] Tipe untuk Verify Pre-OTP (Dapat Token Email)
 export interface VerifyPreOtpResponse {
   message: string;
   data: {
     email: string;
     verificationToken: string;
+  };
+}
+
+// [NEW] Tipe untuk Request Phone OTP (Kirim OTP WA)
+export interface RequestPhoneOtpResponse {
+  message: string;
+  data: {
+    phoneNumber: string;
+  };
+}
+
+// [NEW] Tipe untuk Verify Phone OTP (Dapat Token WA)
+export interface VerifyPhoneOtpResponse {
+  message: string;
+  data: {
+    phoneNumber: string;
+    phoneVerificationToken: string;
   };
 }

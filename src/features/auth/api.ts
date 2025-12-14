@@ -1,11 +1,14 @@
+// src/features/auth/api.ts
 import api from '@/lib/axios';
 import { 
   AuthResponse, 
   LoginPayload, 
   ProfileResponse, 
   RegisterPayload,
-  PreRegisterResponse, // [NEW]
-  VerifyPreOtpResponse // [NEW]
+  PreRegisterResponse,
+  VerifyPreOtpResponse,
+  RequestPhoneOtpResponse, // [NEW]
+  VerifyPhoneOtpResponse   // [NEW]
 } from './types';
 
 // [HELPER] Cookie Management
@@ -53,13 +56,21 @@ export const preRegister = async (email: string) => {
   return response.data;
 };
 
-// [NEW] Verify Pre-OTP: Langkah 2 (Validasi OTP & Dapat Token)
+// [NEW] Verify Pre-OTP: Langkah 2 (Validasi OTP & Dapat Token Email)
 export const verifyPreOtp = async (email: string, otp: string) => {
   const response = await api.post<VerifyPreOtpResponse>('/auth/verify-pre-otp', { email, otp });
-  
-  // Note: Kita tidak setToken disini karena user belum sepenuhnya terdaftar (belum isi data diri).
-  // Token yang didapat adalah 'verificationToken' untuk pass ke registerUser.
-  
+  return response.data;
+};
+
+// [NEW] Request Phone OTP (Kirim OTP WA)
+export const requestPhoneOtp = async (phoneNumber: string) => {
+  const response = await api.post<RequestPhoneOtpResponse>('/auth/request-phone-otp', { phoneNumber });
+  return response.data;
+};
+
+// [NEW] Verify Phone OTP (Validasi OTP & Dapat Token WA)
+export const verifyPhoneOtp = async (phoneNumber: string, otp: string) => {
+  const response = await api.post<VerifyPhoneOtpResponse>('/auth/verify-phone-otp', { phoneNumber, otp });
   return response.data;
 };
 
@@ -79,7 +90,7 @@ export const loginUser = async (credentials: LoginPayload) => {
 };
 
 export const registerUser = async (payload: RegisterPayload) => {
-  // Payload sekarang wajib mengandung verificationToken
+  // Payload sekarang wajib mengandung verificationToken (Email) & phoneVerificationToken (WA)
   const response = await api.post<AuthResponse>('/auth/register', payload);
   
   // Karena registrasi sekarang langsung auto-login (verified di awal), kita simpan token

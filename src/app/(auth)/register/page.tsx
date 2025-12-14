@@ -1,4 +1,4 @@
-// src/app/register/page.tsx
+// src/app/(auth)/register/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +6,13 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic'; 
-import { registerUser, preRegister, verifyPreOtp } from '@/features/auth/api';
+import { 
+  registerUser, 
+  preRegister, 
+  verifyPreOtp,
+  requestPhoneOtp, // [NEW] Import API WA
+  verifyPhoneOtp   // [NEW] Import API WA
+} from '@/features/auth/api';
 import { RegisterPayload } from '@/features/auth/types';
 import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
 
@@ -35,15 +41,23 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
-  // State untuk OTP Flow
+  // =====================
+  // STATE: EMAIL OTP
+  // =====================
   const [otpMode, setOtpMode] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpTimer, setOtpTimer] = useState(0);
   const [verificationToken, setVerificationToken] = useState('');
-  
-  // Status Validasi
   const [emailStatus, setEmailStatus] = useState<'idle' | 'verified'>('idle');
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'sending' | 'verified'>('idle');
+
+  // =====================
+  // STATE: WHATSAPP OTP [NEW]
+  // =====================
+  const [phoneOtpMode, setPhoneOtpMode] = useState(false);
+  const [phoneOtpCode, setPhoneOtpCode] = useState('');
+  const [phoneOtpTimer, setPhoneOtpTimer] = useState(0);
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'verified'>('idle');
 
   // State UI
   const [showPassword, setShowPassword] = useState(false);
@@ -98,7 +112,7 @@ export default function RegisterPage() {
       .catch(console.error);
   }, []);
 
-  // Effect untuk Timer OTP
+  // Effect untuk Timer OTP Email
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (otpTimer > 0) {
@@ -108,6 +122,17 @@ export default function RegisterPage() {
     }
     return () => clearInterval(interval);
   }, [otpTimer]);
+
+  // Effect untuk Timer OTP WhatsApp [NEW]
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (phoneOtpTimer > 0) {
+      interval = setInterval(() => {
+        setPhoneOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [phoneOtpTimer]);
 
   // Check password strength
   const checkPasswordStrength = (password: string) => {
@@ -262,7 +287,9 @@ export default function RegisterPage() {
     );
   };
 
-  // Step 1: Request OTP Email
+  // ==========================================
+  // LOGIC EMAIL OTP
+  // ==========================================
   const handleRequestOtp = async () => {
     if (!formData.email || !formData.email.includes('@')) {
       return alert('Masukkan email yang valid');
@@ -275,14 +302,13 @@ export default function RegisterPage() {
       setOtpTimer(60);
       setErrorMsg('');
     } catch (error: any) {
-      const msg = error.response?.data?.message || 'Gagal mengirim OTP.';
+      const msg = error.response?.data?.message || 'Gagal mengirim OTP Email.';
       setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 1: Verify OTP & Get Token
   const handleVerifyOtp = async () => {
     if (otpCode.length !== 6) {
       return alert('Kode OTP harus 6 digit');
@@ -304,7 +330,6 @@ export default function RegisterPage() {
     }
   };
 
-  // Resend OTP
   const handleResendOtp = async () => {
     if (otpTimer > 0) return;
     
@@ -312,7 +337,7 @@ export default function RegisterPage() {
     try {
       await preRegister(formData.email);
       setOtpTimer(60);
-      alert('Kode OTP baru telah dikirim.');
+      alert('Kode OTP baru telah dikirim ke Email.');
     } catch (error) {
       console.error(error);
       alert('Gagal mengirim ulang OTP.');
@@ -321,15 +346,68 @@ export default function RegisterPage() {
     }
   };
 
-  // Validasi Dummy Phone
-  const handleVerifyPhone = () => {
-    if (formData.phoneNumber.length < 10) {
-      return alert('Nomor HP minimal 10 digit');
+  // ==========================================
+  // LOGIC WHATSAPP OTP [NEW]
+  // ==========================================
+  const handleRequestPhoneOtp = async () => {
+    if (!formData.phoneNumber || formData.phoneNumber.length < 10) {
+      return alert('Masukkan nomor WhatsApp yang valid (min 10 digit).');
     }
-    setPhoneStatus('sending');
-    setTimeout(() => setPhoneStatus('verified'), 1500);
+
+    setIsLoading(true);
+    try {
+      await requestPhoneOtp(formData.phoneNumber);
+      setPhoneOtpMode(true);
+      setPhoneOtpTimer(60);
+      setErrorMsg('');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Gagal mengirim OTP WhatsApp.';
+      setErrorMsg(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const handleVerifyPhoneOtp = async () => {
+    if (phoneOtpCode.length !== 6) {
+      return alert('Kode OTP harus 6 digit');
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await verifyPhoneOtp(formData.phoneNumber, phoneOtpCode);
+      setPhoneVerificationToken(res.data.phoneVerificationToken);
+      setPhoneStatus('verified');
+      setPhoneOtpMode(false);
+      setErrorMsg('');
+      alert('Nomor WhatsApp berhasil diverifikasi!');
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Kode OTP WhatsApp salah.';
+      setErrorMsg(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendPhoneOtp = async () => {
+    if (phoneOtpTimer > 0) return;
+
+    setIsLoading(true);
+    try {
+      await requestPhoneOtp(formData.phoneNumber);
+      setPhoneOtpTimer(60);
+      alert('Kode OTP baru telah dikirim ke WhatsApp.');
+    } catch (error) {
+      console.error(error);
+      alert('Gagal mengirim ulang OTP WhatsApp.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ==========================================
+  // STEPS VALIDATION
+  // ==========================================
   const validateStep = (): string => {
     setErrorMsg('');
     
@@ -377,6 +455,9 @@ export default function RegisterPage() {
       if (formData.phoneNumber.length < 10 || formData.phoneNumber.length > 15) {
         return 'Nomor telepon harus 10-15 digit.';
       }
+      if (phoneStatus !== 'verified') {
+        return 'Nomor WhatsApp wajib diverifikasi.';
+      }
     }
     
     return '';
@@ -397,7 +478,9 @@ export default function RegisterPage() {
     setStep(prev => prev - 1);
   };
 
-  // Final Submit
+  // ==========================================
+  // FINAL SUBMIT
+  // ==========================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -416,6 +499,10 @@ export default function RegisterPage() {
         setErrorMsg('Sesi verifikasi email kadaluarsa. Silakan refresh dan ulangi.');
         return;
     }
+    if (!phoneVerificationToken) {
+        setErrorMsg('Sesi verifikasi WhatsApp kadaluarsa. Silakan refresh dan ulangi.');
+        return;
+    }
 
     setIsLoading(true);
     
@@ -428,7 +515,8 @@ export default function RegisterPage() {
         birthDate: formData.birthDate,
         gender: formData.gender,
         roles: ['customer'],
-        verificationToken,
+        verificationToken,      // Token Email
+        phoneVerificationToken, // Token WhatsApp [NEW]
         address: {
           province: formData.addressProvince,
           district: formData.addressDistrict,
@@ -461,7 +549,7 @@ export default function RegisterPage() {
       {/* Container Utama */}
       <div className="bg-white w-full max-w-5xl lg:rounded-3xl lg:shadow-2xl overflow-hidden flex flex-col lg:flex-row min-h-screen lg:min-h-[600px] relative">
           
-        {/* OTP MODAL OVERLAY */}
+        {/* OTP MODAL OVERLAY (EMAIL) */}
         {otpMode && (
           <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-fadeIn">
             <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 text-center relative overflow-hidden">
@@ -528,6 +616,82 @@ export default function RegisterPage() {
                     onClick={handleResendOtp}
                     disabled={isLoading}
                     className="text-red-600 font-bold hover:underline disabled:opacity-50"
+                  >
+                    Kirim Ulang OTP
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* OTP MODAL OVERLAY (WHATSAPP) [NEW] */}
+        {phoneOtpMode && (
+          <div className="absolute inset-0 z-50 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-fadeIn">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 text-center relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
+              
+              <button 
+                onClick={() => setPhoneOtpMode(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              <div className="mb-6 flex justify-center">
+                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center text-green-600">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Verifikasi WhatsApp</h2>
+              <p className="text-gray-500 text-sm mb-6">
+                Kami telah mengirimkan 6 digit kode OTP ke nomor <br/>
+                <span className="font-bold text-gray-800">{formData.phoneNumber}</span>
+              </p>
+
+              {errorMsg && (
+                 <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-lg font-medium">
+                    {errorMsg}
+                 </div>
+              )}
+
+              <div className="mb-6">
+                <input 
+                  type="text" 
+                  value={phoneOtpCode}
+                  onChange={(e) => {
+                    if (/^\d*$/.test(e.target.value) && e.target.value.length <= 6) {
+                      setPhoneOtpCode(e.target.value);
+                    }
+                  }}
+                  className="w-full h-14 text-center text-3xl font-bold tracking-[0.5em] text-gray-800 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none transition-all"
+                  placeholder="000000"
+                  autoFocus
+                />
+              </div>
+
+              <button 
+                onClick={handleVerifyPhoneOtp}
+                disabled={isLoading || phoneOtpCode.length !== 6}
+                className="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+              >
+                {isLoading ? 'Memverifikasi...' : 'Verifikasi Kode WA'}
+              </button>
+
+              <div className="text-sm text-gray-500">
+                Belum menerima kode?{' '}
+                {phoneOtpTimer > 0 ? (
+                  <span className="text-gray-400 font-medium">Kirim ulang dalam {phoneOtpTimer}s</span>
+                ) : (
+                  <button 
+                    onClick={handleResendPhoneOtp}
+                    disabled={isLoading}
+                    className="text-green-600 font-bold hover:underline disabled:opacity-50"
                   >
                     Kirim Ulang OTP
                   </button>
@@ -634,7 +798,7 @@ export default function RegisterPage() {
               </div>
 
               {/* Error Message (Global, except inside OTP modal) */}
-              {errorMsg && !otpMode && (
+              {errorMsg && !otpMode && !phoneOtpMode && (
                 <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg font-medium animate-pulse flex items-center gap-2">
                   <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -834,7 +998,7 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    {/* Nomor WhatsApp */}
+                    {/* Nomor WhatsApp & Verifikasi */}
                     <div className="flex flex-col gap-2">
                       <label className="label-text">Nomor WhatsApp</label>
                       <div className="flex gap-3">
@@ -844,12 +1008,31 @@ export default function RegisterPage() {
                           name="phoneNumber" 
                           value={formData.phoneNumber} 
                           onChange={handleChange} 
-                          className="input-field flex-1" 
+                          className="input-field flex-1 disabled:bg-green-50 disabled:text-green-800 disabled:border-green-200" 
                           placeholder="812xxxxxxx"
                           maxLength={15}
                           autoComplete="tel"
+                          disabled={phoneStatus === 'verified'}
                         />
+
+                        {phoneStatus === 'verified' ? (
+                          <div className="px-4 flex items-center justify-center bg-green-100 text-green-700 rounded-xl font-bold text-sm border border-green-200 min-w-[100px]">
+                             ✓ Verified
+                          </div>
+                        ) : (
+                          <button 
+                            type="button" 
+                            onClick={handleRequestPhoneOtp} 
+                            disabled={isLoading || !formData.phoneNumber} 
+                            className="px-5 rounded-xl text-xs font-bold bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 transition-all shadow-md hover:-translate-y-0.5 min-w-[100px]"
+                          >
+                            {isLoading ? '...' : 'Verifikasi WA'}
+                          </button>
+                        )}
                       </div>
+                       <p className="text-[10px] text-gray-400 leading-relaxed">
+                        Nomor ini akan digunakan untuk login dan notifikasi penting.
+                      </p>
                     </div>
                   </div>
                 )}
