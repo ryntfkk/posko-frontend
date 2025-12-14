@@ -1,10 +1,25 @@
+// src/features/services/types.ts
+
 export type ServiceUnit = 'unit' | 'jam' | 'hari' | 'meter' | 'kg' | 'paket' | 'orang' | 'ruangan' | 'kendaraan' | 'sesi';
+
+// [BARU] Definisi Tipe Kategori
+export interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  iconUrl: string;
+  order?: number;
+  isActive?: boolean;
+}
 
 export interface Service {
   _id: string;
   name: string;
   slug?: string;
-  category: string;
+  
+  // [UPDATE] Mengubah dari string tunggal menjadi Array Kategori
+  categories: Category[]; 
+  
   shortDescription?: string;
   description: string;
   

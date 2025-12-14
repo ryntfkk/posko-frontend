@@ -1,3 +1,4 @@
+// src/app/page.tsx
 'use client';
 import {
   Headphones,
@@ -17,8 +18,8 @@ import { useRouter } from 'next/navigation';
 // --- API & TYPES ---
 import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
-import { fetchServices } from '@/features/services/api';
-import { Service } from '@/features/services/types';
+import { fetchServices, fetchCategories } from '@/features/services/api'; // [UPDATE] Import fetchCategories
+import { Service, Category } from '@/features/services/types'; // [UPDATE] Import Category
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
 import { useCart } from '@/features/cart/useCart'; 
@@ -63,7 +64,9 @@ export default function HomePage() {
   
   // Data State
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // [BARU] State Categories
   const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true); // [BARU] Loading state
   const [promos, setPromos] = useState<Voucher[]>([]);
   const [isLoadingPromos, setIsLoadingPromos] = useState(true);
   
@@ -75,7 +78,15 @@ export default function HomePage() {
   const isProviderMode = userProfile?.activeRole === 'provider';
   const hasProviderRole = userProfile?.roles.includes('provider');
 
-  // Fetch Services
+  // Fetch Categories [BARU]
+  useEffect(() => {
+    fetchCategories()
+      .then(res => setCategories(res.data || [])) // Response structure { status, data }
+      .catch(err => console.error("Gagal memuat kategori:", err))
+      .finally(() => setIsLoadingCategories(false));
+  }, []);
+
+  // Fetch Services (Hanya sebagai data tambahan jika diperlukan, tidak lagi untuk generate kategori)
   useEffect(() => {
     fetchServices()
       .then(res => setServices(res.data || []))
@@ -119,26 +130,6 @@ export default function HomePage() {
       router.replace('/dashboard');
     }
   }, [isProviderMode, isLoadingProfile, router]);
-
-  // Group Services
-  const groupServicesToCategories = (services: Service[]) => {
-    const categoriesMap = new Map();
-    services.forEach(service => {
-        const normalizedCategory = service.category.trim().toLowerCase();
-        const categoryKey = normalizedCategory;
-        
-        if (!categoriesMap.has(categoryKey)) {
-            categoriesMap.set(categoryKey, {
-                name: service.category, 
-                slug: normalizedCategory.replace(/\s+/g, '-'), 
-                iconUrl: service.iconUrl, 
-            });
-        }
-    });
-    return Array.from(categoriesMap.values());
-  };
-
-  const categories = useMemo(() => groupServicesToCategories(services), [services]);
 
   // Checkout URL
   const checkoutUrl = useMemo(() => {
@@ -359,7 +350,7 @@ export default function HomePage() {
       </section>
 
       {/* CATEGORIES */}
-      <ServiceCategories categories={categories} isLoading={isLoadingServices} />
+      <ServiceCategories categories={categories} isLoading={isLoadingCategories} />
 
       {/* BECOME PARTNER SECTION */}
       <BecomePartnerSection />

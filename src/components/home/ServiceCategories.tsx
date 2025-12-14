@@ -4,33 +4,21 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { useLanguage } from '@/context/LanguageContext'; // [BARU] Import
-
-interface CategoryData {
-  name: string;
-  slug: string;
-  iconUrl: string;
-}
+import { useLanguage } from '@/context/LanguageContext';
+import { Category } from '@/features/services/types'; // [UPDATE] Import Type
 
 interface ServiceCategoriesProps {
-  categories: CategoryData[];
+  categories: Category[]; // [UPDATE] Menggunakan interface Category dari types
   isLoading: boolean;
 }
 
 export default function ServiceCategories({ categories, isLoading }: ServiceCategoriesProps) {
-  const { t } = useLanguage(); // [BARU] Hook
+  const { t } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Helper Link Generation
-  const getCategoryLink = (category: CategoryData) => {
-    const normalizedSlug = category.slug.toLowerCase();
-    const normalizedName = category.name.toLowerCase();
-    const isACCategory = /\bac\b/.test(normalizedName) || normalizedSlug === 'ac' || normalizedSlug.startsWith('ac-');
-
-    if (isACCategory) {
-      const params = new URLSearchParams({ category: category.name, categoryId: category.slug });
-      return `/services/${category.slug}?${params.toString()}`;
-    }
+  const getCategoryLink = (category: Category) => {
+    // Karena slug sudah ada di database, kita pakai langsung
     return `/services/${category.slug}`;
   };
 
@@ -46,7 +34,6 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
   return (
     <section className="px-4 mt-4 lg:max-w-7xl lg:mx-auto lg:px-8">
       <div className="flex justify-between items-baseline mb-3">
-        {/* [UPDATE] Menggunakan t() */}
         <h3 className="text-sm font-bold text-gray-900 tracking-tight lg:text-lg">
           {t('home.categoriesTitle')}
         </h3>
@@ -63,23 +50,24 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
         </div>
       ) : categories.length === 0 ? (
         <div className="p-4 text-center bg-white rounded-xl border border-gray-100 shadow-sm border-dashed">
-          {/* [UPDATE] Menggunakan t() */}
           <p className="text-xs text-gray-400">{t('home.noCategories')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-x-2 gap-y-3">
           {visibleCategories.map((cat) => (
             <Link
-              key={cat.name}
+              key={cat._id} 
               href={getCategoryLink(cat)}
               className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
             >
               <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex items-center justify-center p-2 group-hover:border-red-200 group-hover:shadow-md transition-all">
                 <Image
-                  src={cat.iconUrl || '/icons/logo-posko.png'}
+                  src={cat.iconUrl}
                   alt={cat.name}
                   width={32} 
                   height={32}
+                  // Menggunakan unoptimized untuk gambar eksternal (S3) jika domain belum di whitelist sepenuhnya, 
+                  // tapi karena sudah di next.config, ini aman.
                   className="object-contain w-5 h-5 lg:w-6 lg:h-6 opacity-80 group-hover:opacity-100 transition-opacity"
                   onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
                 />
@@ -100,7 +88,6 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </div>
-              {/* [UPDATE] Menggunakan t() */}
               <span className="text-[10px] lg:text-xs font-bold text-gray-500 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-600 transition-colors">
                 {t('common.others')}
               </span>
@@ -117,7 +104,6 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                 </svg>
               </div>
-              {/* [UPDATE] Menggunakan t() */}
               <span className="text-[10px] lg:text-xs font-bold text-red-600 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-800 transition-colors">
                 {t('common.close')}
               </span>
