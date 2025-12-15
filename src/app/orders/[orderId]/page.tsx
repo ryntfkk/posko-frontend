@@ -284,6 +284,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         await createReview({
             userId: typeof order.userId === 'object' ? order.userId._id : order.userId,
             providerId: providerId,
+            orderId: order._id, // [FIX] Tambahkan orderId agar sesuai validasi backend
             rating,
             comment
         });

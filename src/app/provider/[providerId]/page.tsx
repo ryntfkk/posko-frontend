@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'; // [UPDATE] Import useRo
 import { useEffect, useState } from 'react';
 
 import api from '@/lib/axios'; // [UPDATE] Import axios instance
-import { fetchProviderById } from '@/features/providers/api';
+import { fetchProviderById, toggleFavorite, checkFavoriteStatus } from '@/features/providers/api'; // [UPDATE] Import checkFavoriteStatus
 import { fetchProfile } from '@/features/auth/api';
 import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
@@ -68,8 +68,17 @@ export default function ProviderProfilePage() {
 
         const token = localStorage.getItem('posko_token');
         if (token) {
+          // 1. Load Profile
           const userRes = await fetchProfile();
           setCurrentUser(userRes.data.profile);
+
+          // 2. [FIX] Check Initial Favorite Status
+          try {
+             const favRes = await checkFavoriteStatus(providerId);
+             setIsFavorited(favRes.data.isFavorited);
+          } catch (err) {
+             console.error('Gagal cek status favorit:', err);
+          }
         } else {
           setDistance('Login untuk Jarak');
         }
@@ -113,8 +122,37 @@ export default function ProviderProfilePage() {
     setTimeout(() => setIsSharing(false), 500);
   };
 
-  const handleToggleFavorite = () => {
-    setIsFavorited(! isFavorited);
+  const handleToggleFavorite = async () => {
+    if (!provider || !provider.userId) return; // Safety check
+    
+    // 1. Optimistic Update (UI Langsung Berubah)
+    const oldIsFavorited = isFavorited;
+    const oldProvider = { ...provider }; // Shallow copy
+    
+    // Toggle state icon
+    const newStatus = !oldIsFavorited;
+    setIsFavorited(newStatus);
+    
+    // Toggle counter (Handle type casting if field is missing in generic Provider type)
+    const currentFavs = (provider as any).totalFavorites || 0;
+    const newFavs = newStatus ? currentFavs + 1 : Math.max(0, currentFavs - 1);
+    
+    setProvider({
+        ...provider,
+        // @ts-ignore
+        totalFavorites: newFavs
+    } as Provider);
+
+    try {
+        // 2. Call API
+        await toggleFavorite(provider._id);
+    } catch (error) {
+        console.error('Gagal update favorit:', error);
+        // 3. Revert jika gagal
+        setIsFavorited(oldIsFavorited);
+        setProvider(oldProvider);
+        alert('Gagal menyimpan favorit. Silakan coba lagi.');
+    }
   };
 
   // [BARU] Handler Chat: Buat room jika belum ada, lalu redirect

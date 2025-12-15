@@ -46,6 +46,18 @@ export const fetchProviderMe = async () => {
   return response.data;
 };
 
+// [FIX] URL diperbaiki dari '/favorites' menjadi '/favorites/toggle'
+export const toggleFavorite = async (providerId: string) => {
+  const response = await api.post('/favorites/toggle', { providerId });
+  return response.data;
+};
+
+// [BARU] Cek status favorit awal
+export const checkFavoriteStatus = async (providerId: string) => {
+  const response = await api.get<{ data: { isFavorited: boolean } }>(`/favorites/check/${providerId}`);
+  return response.data;
+};
+
 export const createProvider = async (data: any) => {
   const response = await api.post('/providers', data);
   return response.data;

@@ -93,10 +93,14 @@ export default function ProviderDocumentationContent({ provider, onImageClick }:
                 `Bukti Order ${item.orderNumber || idx}`,
                 <>
                   {/* Overlay: HANYA MENAMPILKAN NOMOR ORDER */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                  {/* [FIX 1] Menghapus class opacity-0 dan group-hover:opacity-100 agar selalu tampil di Mobile */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
                      <div className="flex items-center gap-2">
                        <div className="w-6 h-6 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
-                          <span className="text-xs">📦</span>
+                          {/* [FIX 2] Ganti Emoji dengan Icon SVG Hashtag/ID yang bersih & profesional */}
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                          </svg>
                        </div>
                        <div className="flex flex-col">
                          <span className="text-[8px] text-gray-300 uppercase tracking-wider leading-none">Order ID</span>
@@ -107,7 +111,7 @@ export default function ProviderDocumentationContent({ provider, onImageClick }:
                      </div>
                   </div>
 
-                  {/* Icon Zoom Center */}
+                  {/* Icon Zoom Center (Tetap tersembunyi kecuali di-hover agar tidak menutupi gambar) */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                      <div className="bg-white/90 rounded-full p-2.5 text-gray-800 shadow-xl">
                         <ZoomIcon />
