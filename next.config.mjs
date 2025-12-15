@@ -11,11 +11,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
-    // [FIX] Izinkan SVG dari domain eksternal (Dicebear)
+    // unoptimized: true, // [OPSIONAL] Matikan ini jika ingin optimasi gambar Next.js aktif (disarankan dimatikan hanya saat debugging)
+    
+    // [FIX] Izinkan SVG dari domain eksternal
     dangerouslyAllowSVG: true,
-    // Opsional: Tambahkan header keamanan untuk SVG
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    
     remotePatterns: [
       {
         protocol: 'https',
@@ -47,7 +48,22 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      // [BARU] Konfigurasi Domain AWS S3 - Pastikan Hostname ini Sesuai Bucket Anda!
+      // [UPDATE] Konfigurasi Domain AWS S3 yang Lebih Luas
+      // Menangani format: https://bucket-name.s3.region.amazonaws.com
+      {
+        protocol: 'https',
+        hostname: '*.s3.*.amazonaws.com', 
+        port: '',
+        pathname: '/**',
+      },
+      // Menangani format: https://s3.amazonaws.com/bucket-name
+      {
+        protocol: 'https',
+        hostname: 's3.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Menangani format spesifik bucket Anda (Backup)
       {
         protocol: 'https',
         hostname: 'posko-storage-prod.s3.ap-southeast-1.amazonaws.com', 
@@ -58,17 +74,12 @@ const nextConfig = {
   },
   // [LANGKAH 2] Menambahkan konfigurasi Rewrites (Proxy)
   async rewrites() {
-    // Bersihkan environment variable dari spasi
     const backendUrl = (process.env.BACKEND_URL || 'https://api.poskojasa.com/api').trim();
-    
-    // Pastikan tidak ada double slash di akhir backendUrl sebelum digabung
     const cleanBackendUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
 
     return [
       {
-        // Menangkap semua request yang diawali dengan /api/proxy
         source: '/api/proxy/:path*',
-        // Meneruskannya ke Backend EC2 yang sebenarnya
         destination: `${cleanBackendUrl}/:path*`,
       },
     ];
