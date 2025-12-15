@@ -350,8 +350,15 @@ function OrderSummaryContent() {
       };
 
       const orderRes = await createOrder(orderPayload);
-      const orderId = orderRes.data._id;
-      const orderNumber = orderRes.data.orderNumber;
+      
+      // [FIXED] Mengakses response.data.data karena struktur API Posko
+      // orderRes (Axios Response) -> data (Body JSON) -> data (Data Order asli dari Backend)
+      const orderId = orderRes.data.data._id;
+      const orderNumber = orderRes.data.data.orderNumber;
+      
+      if (!orderId) {
+          throw new Error('Gagal mendapatkan ID Order dari server.');
+      }
       
       const paymentRes = await createPayment(orderId);
       const snapToken = paymentRes.data.snapToken;
