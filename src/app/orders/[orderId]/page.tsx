@@ -320,10 +320,10 @@ export default function OrderDetailPage({ params }: PageProps) {
   };
 
   // Logic Safety: Pastikan order ada
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
   
   if (queryError || !order) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 gap-4">
         <p className="text-gray-500 font-medium">Pesanan tidak ditemukan atau gagal dimuat.</p>
         <button onClick={() => refetch()} className="text-sm text-red-600 underline">Coba Lagi</button>
     </div>
@@ -362,7 +362,13 @@ export default function OrderDetailPage({ params }: PageProps) {
   const canCancel = ['pending', 'searching', 'paid'].includes(order.status);
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-36 font-sans text-gray-900">
+    /**
+     * NOTE FOR DEVELOPERS:
+     * We use 'bg-white' instead of gray/gradient.
+     * The BottomNav (in root layout) has z-index 99 and is approx 80px-100px high.
+     * We add 'pb-40' to this container to ensure the floating action bar doesn't cover content.
+     */
+    <div className="min-h-screen bg-white pb-40 font-sans text-gray-900">
       
       {/* 1. COMPACT NAVBAR */}
       <div className="bg-white sticky top-0 z-20 px-4 h-12 flex items-center justify-between shadow-sm border-b border-gray-100">
@@ -756,7 +762,13 @@ export default function OrderDetailPage({ params }: PageProps) {
       </main>
 
       {/* 9. FLOATING BOTTOM ACTION BAR */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 flex gap-2 z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      {/* NOTE FOR DEVELOPERS:
+          BottomNav component (in global layout) has z-index 99.
+          We set this Action Bar to z-[1000] to ensure it sits ON TOP of the BottomNav 
+          when viewed on mobile devices, preventing user frustration.
+          We also ensure the page has enough padding-bottom (pb-40) so content scrolls fully.
+      */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 flex gap-2 z-[1000] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         
         {order.status === 'pending' && (
           <button 
@@ -818,7 +830,7 @@ export default function OrderDetailPage({ params }: PageProps) {
 
       {/* 10. MODALS (Cancel & Dispute) */}
       {activeModal && (
-        <div className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[1050] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
              <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                     <h3 className="font-bold text-gray-900">
@@ -837,7 +849,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                         value={actionReason}
                         onChange={(e) => setActionReason(e.target.value)}
                         placeholder="Tulis alasan di sini..."
-                        className="w-full h-24 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                        className="w-full h-24 p-3 bg-white border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
                     />
                 </div>
                 <div className="p-4 bg-gray-50 flex gap-3 border-t border-gray-100">
@@ -862,7 +874,7 @@ export default function OrderDetailPage({ params }: PageProps) {
       {/* LIGHTBOX MODAL */}
       {lightboxImage && (
         <div 
-          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[1100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setLightboxImage(null)}
         >
           <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center">

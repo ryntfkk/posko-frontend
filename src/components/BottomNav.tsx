@@ -16,8 +16,12 @@ export default function BottomNav() {
     return false;
   };
 
-  // Sembunyikan navigasi di halaman Auth (Login/Register)
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
+  // Logic: Sembunyikan navigasi di halaman Auth DAN Halaman Detail Order
+  // Penjelasan: Kita ingin Nav muncul di '/orders' (List), tapi HILANG di '/orders/123' (Detail)
+  // Jadi jika path dimulai dengan '/orders/' tapi BUKAN '/orders' persis, itu adalah detail page.
+  const isOrderDetailPage = pathname.startsWith('/orders/') && pathname !== '/orders';
+
+  if (pathname.startsWith('/login') || pathname.startsWith('/register') || isOrderDetailPage) {
     return null;
   }
 
