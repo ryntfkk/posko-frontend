@@ -5,8 +5,10 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query'; // [UPDATE] Migrasi ke React Query
 
-import { fetchOrderById, updateOrderStatus, rejectAdditionalFee } from '@/features/orders/api';
+import { fetchOrderById, updateOrderStatus, rejectAdditionalFee, cancelOrder, disputeOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api';
 import { createReview } from '@/features/reviews/api';
 import { Order, OrderStatus } from '@/features/orders/types';
@@ -21,7 +23,6 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
-// Komponen helper untuk recenter map
 const MapRecenter = dynamic(() => import('react-leaflet').then((mod) => {
     const { useMap } = mod;
     return function Recenter({ lat, lng }: { lat: number; lng: number }) {
@@ -50,7 +51,8 @@ const Icons = {
   Info: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   Printer: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>,
   Help: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
-  Zoom: () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+  Zoom: () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>,
+  Alert: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
 };
 
 // --- HELPERS ---
@@ -95,8 +97,27 @@ interface PageProps {
 export default function OrderDetailPage({ params }: PageProps) {
   const { orderId } = params;
   
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // [UPDATE] Migrasi ke useQuery untuk Data Fetching & Realtime Updates
+  // Ini memperbaiki masalah data kosong karena data di-unpack dengan benar (res.data.data)
+  // Dan memungkinkan fitur SocketContext untuk me-refresh data secara otomatis.
+  const { 
+    data: orderData, 
+    isLoading: isQueryLoading, 
+    error: queryError,
+    refetch 
+  } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: async () => {
+      const res = await fetchOrderById(orderId);
+      // [FIX CRITICAL] Ambil .data.data karena response API dibungkus { message, data }
+      return res.data.data;
+    },
+    enabled: !!orderId,
+  });
+
+  const order = orderData || null;
+  const isLoading = isQueryLoading;
+
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isSnapLoaded = useMidtrans();
 
@@ -111,6 +132,10 @@ export default function OrderDetailPage({ params }: PageProps) {
   // Payment Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
+
+  // Modal State
+  const [activeModal, setActiveModal] = useState<'cancel' | 'dispute' | null>(null);
+  const [actionReason, setActionReason] = useState('');
 
   // State untuk custom icon leaflet
   const [redIcon, setRedIcon] = useState<any>(null);
@@ -131,22 +156,6 @@ export default function OrderDetailPage({ params }: PageProps) {
       setRedIcon(icon);
     })();
   }, []);
-
-  useEffect(() => {
-    const loadOrder = async () => {
-      try {
-        const res = await fetchOrderById(orderId);
-        setOrder(res.data);
-      } catch (error) {
-        console.error('Err:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    if (orderId) {
-        loadOrder();
-    }
-  }, [orderId]);
 
   // Effect untuk menghitung mundur waktu pembayaran
   useEffect(() => {
@@ -183,8 +192,15 @@ export default function OrderDetailPage({ params }: PageProps) {
       
       if (window.snap) {
         window.snap.pay(res.data.snapToken, {
-          onSuccess: () => window.location.reload(),
-          onPending: () => window.location.reload(),
+          onSuccess: () => {
+             // [UPDATE] Gunakan refetch query, bukan reload page
+             refetch();
+             alert('Pembayaran Berhasil! Mohon tunggu konfirmasi.');
+          },
+          onPending: () => {
+             refetch();
+             alert('Menunggu Pembayaran...');
+          },
           onError: () => alert('Pembayaran Gagal.'),
           onClose: () => setIsActionLoading(false)
         });
@@ -200,8 +216,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     setIsActionLoading(true);
     try {
       await rejectAdditionalFee(orderId, feeId);
-      const res = await fetchOrderById(orderId);
-      setOrder(res.data);
+      refetch(); // [UPDATE] Refresh data without reload
     } catch (e) {
       alert('Gagal menolak.');
     } finally {
@@ -214,11 +229,41 @@ export default function OrderDetailPage({ params }: PageProps) {
     setIsActionLoading(true);
     try {
       await updateOrderStatus(orderId, 'completed');
-      window.location.reload();
+      refetch(); // [UPDATE] Refresh data
     } catch (e) {
       alert('Gagal konfirmasi.');
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!actionReason.trim()) return alert("Mohon isi alasan pembatalan.");
+    setIsActionLoading(true);
+    try {
+        await cancelOrder(orderId, actionReason);
+        alert("Pesanan berhasil dibatalkan.");
+        setActiveModal(null);
+        refetch(); // [UPDATE] Refresh data
+    } catch (error: any) {
+        alert(error.response?.data?.message || "Gagal membatalkan pesanan.");
+    } finally {
+        setIsActionLoading(false);
+    }
+  };
+
+  const handleDisputeOrder = async () => {
+    if (!actionReason.trim()) return alert("Mohon jelaskan masalah yang Anda alami.");
+    setIsActionLoading(true);
+    try {
+        await disputeOrder(orderId, actionReason);
+        alert("Komplain berhasil diajukan. Admin akan segera memeriksa.");
+        setActiveModal(null);
+        refetch(); // [UPDATE] Refresh data
+    } catch (error: any) {
+        alert(error.response?.data?.message || "Gagal mengajukan komplain.");
+    } finally {
+        setIsActionLoading(false);
     }
   };
 
@@ -244,7 +289,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         });
         alert("Ulasan terkirim!");
         setIsReviewModalOpen(false);
-        window.location.reload();
+        refetch();
     } catch (error) {
         alert("Gagal mengirim ulasan.");
     } finally {
@@ -269,36 +314,41 @@ export default function OrderDetailPage({ params }: PageProps) {
       completed: { label: 'Selesai', color: 'text-emerald-600', bg: 'bg-emerald-50' },
       cancelled: { label: 'Batal', color: 'text-red-600', bg: 'bg-red-50' },
       failed: { label: 'Gagal', color: 'text-gray-600', bg: 'bg-gray-50' },
+      disputed: { label: 'Dalam Komplain', color: 'text-purple-600', bg: 'bg-purple-50' },
     };
     return map[status] || map.pending;
   };
 
-  const unpaidAdditionalFees = useMemo(() => {
-    if (!order?.additionalFees) return 0;
-    return order.additionalFees
-      .filter(f => f.status === 'pending_approval')
-      .reduce((acc, f) => acc + f.amount, 0);
-  }, [order]);
+  // Logic Safety: Pastikan order ada
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
+  
+  if (queryError || !order) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 gap-4">
+        <p className="text-gray-500 font-medium">Pesanan tidak ditemukan atau gagal dimuat.</p>
+        <button onClick={() => refetch()} className="text-sm text-red-600 underline">Coba Lagi</button>
+    </div>
+  );
+
+  const unpaidAdditionalFees = order.additionalFees
+      ? order.additionalFees
+        .filter(f => f.status === 'pending_approval')
+        .reduce((acc, f) => acc + f.amount, 0)
+      : 0;
 
   const hasUnpaidFees = unpaidAdditionalFees > 0;
 
-  const autoCompleteDeadline = useMemo(() => {
-    if (order?.status === 'waiting_approval' && order.waitingApprovalAt) {
-      const start = new Date(order.waitingApprovalAt);
-      return new Date(start.getTime() + 48 * 60 * 60 * 1000); 
-    }
-    return null;
-  }, [order?.status, order?.waitingApprovalAt]);
-
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
-  if (!order) return <div className="p-8 text-center text-xs text-gray-500">Pesanan tidak ditemukan</div>;
+  const autoCompleteDeadline = order.status === 'waiting_approval' && order.waitingApprovalAt
+      ? new Date(new Date(order.waitingApprovalAt).getTime() + 48 * 60 * 60 * 1000)
+      : null;
 
   const statusInfo = getStatusInfo(order.status);
   const providerData = typeof order.providerId === 'object' ? order.providerId : null;
 
-  const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  // [SAFETY FIX] Defensive coding untuk kalkulasi
+  const subtotal = (order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  
   const totalAdditionalFees = order.additionalFees?.reduce((acc, fee) => {
-    if (fee.status === 'rejected') return acc;
+    if (fee.status === 'rejected' || fee.status === 'voided') return acc;
     return acc + fee.amount;
   }, 0) || 0;
   
@@ -309,6 +359,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     : [-6.200000, 106.816666];
 
   const canShowReceipt = !['pending', 'cancelled', 'failed'].includes(order.status);
+  const canCancel = ['pending', 'searching', 'paid'].includes(order.status);
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-36 font-sans text-gray-900">
@@ -321,9 +372,19 @@ export default function OrderDetailPage({ params }: PageProps) {
             </Link>
             <h1 className="text-sm font-bold">Rincian Pesanan</h1>
         </div>
-        <button onClick={openSupportWA} className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
-            <Icons.Help /> Bantuan
-        </button>
+        <div className="flex items-center gap-2">
+             {canCancel && (
+                <button 
+                    onClick={() => { setActionReason(''); setActiveModal('cancel'); }}
+                    className="text-[10px] font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded"
+                >
+                    Batalkan
+                </button>
+             )}
+             <button onClick={openSupportWA} className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+                <Icons.Help /> Bantuan
+            </button>
+        </div>
       </div>
 
       <main className="max-w-xl mx-auto p-3 space-y-3">
@@ -439,7 +500,8 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
           
           <div className="p-3 space-y-3">
-            {order.items.map((item, i) => (
+            {/* [SAFETY] Gunakan optional chaining dan fallback array */}
+            {(order.items || []).map((item, i) => (
               <div key={i} className="flex flex-col gap-1 text-xs">
                  <div className="flex justify-between items-start">
                     <div className="flex gap-2">
@@ -462,38 +524,41 @@ export default function OrderDetailPage({ params }: PageProps) {
             {order.additionalFees && order.additionalFees.length > 0 && (
               <div className="border-t border-dashed border-gray-200 pt-2 mt-2 bg-orange-50/40 p-2 rounded-lg border-orange-100/50">
                 <p className="text-[10px] font-bold text-orange-400 mb-1.5 uppercase">Biaya Tambahan</p>
-                {order.additionalFees.map((fee, idx) => (
-                  <div key={idx} className="flex flex-col mb-2 last:mb-0">
-                    <div className="flex justify-between items-start text-xs">
-                       <span className={`${fee.status === 'rejected' ? 'text-gray-400 line-through' : 'text-gray-700'} flex-1`}>
-                          {fee.description}
-                       </span>
-                       <span className={`font-bold ml-2 ${fee.status === 'rejected' ? 'text-gray-400' : 'text-orange-600'}`}>
-                          +{formatCurrency(fee.amount)}
-                       </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mt-1">
-                         <span className={`text-[9px] px-1.5 py-0.5 rounded ${
-                             fee.status === 'paid' ? 'bg-green-100 text-green-700' : 
-                             fee.status === 'rejected' ? 'bg-gray-200 text-gray-500' :
-                             'bg-yellow-100 text-yellow-700'
-                         }`}>
-                             {fee.status === 'pending_approval' ? 'Konfirmasi...' : 
-                              fee.status === 'rejected' ? 'Ditolak' : fee.status}
-                         </span>
-                         {fee.status === 'pending_approval' && (
-                             <button 
-                                 onClick={() => handleReject(fee._id)}
-                                 disabled={isActionLoading}
-                                 className="text-[9px] border border-red-200 text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50"
-                             >
-                                 Tolak
-                             </button>
-                         )}
-                    </div>
-                  </div>
-                ))}
+                {order.additionalFees.map((fee, idx) => {
+                    if (fee.status === 'voided') return null;
+                    return (
+                        <div key={idx} className="flex flex-col mb-2 last:mb-0">
+                            <div className="flex justify-between items-start text-xs">
+                            <span className={`${fee.status === 'rejected' ? 'text-gray-400 line-through' : 'text-gray-700'} flex-1`}>
+                                {fee.description}
+                            </span>
+                            <span className={`font-bold ml-2 ${fee.status === 'rejected' ? 'text-gray-400' : 'text-orange-600'}`}>
+                                +{formatCurrency(fee.amount)}
+                            </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded ${
+                                    fee.status === 'paid' ? 'bg-green-100 text-green-700' : 
+                                    fee.status === 'rejected' ? 'bg-gray-200 text-gray-500' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                    {fee.status === 'pending_approval' ? 'Konfirmasi...' : 
+                                    fee.status === 'rejected' ? 'Ditolak' : fee.status}
+                                </span>
+                                {fee.status === 'pending_approval' && (
+                                    <button 
+                                        onClick={() => handleReject(fee._id)}
+                                        disabled={isActionLoading}
+                                        className="text-[9px] border border-red-200 text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50"
+                                    >
+                                        Tolak
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
                 
                 {hasUnpaidFees && (
                    <button 
@@ -545,7 +610,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
             <div className="p-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
                <h3 className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                 <Icons.MapPin /> Lokasi & Properti
+                 <Icons.MapPin /> Lokasi Pelayanan (Customer)
                </h3>
                <a 
                   href={`http://maps.google.com/maps?q=${mapCenter[0]},${mapCenter[1]}`}
@@ -617,7 +682,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                   <MapRecenter lat={mapCenter[0]} lng={mapCenter[1]} />
                   {redIcon && (
                     <Marker position={mapCenter} icon={redIcon}>
-                      <Popup>Lokasi</Popup>
+                      <Popup>Lokasi Anda</Popup>
                     </Marker>
                   )}
                 </MapContainer>
@@ -709,14 +774,25 @@ export default function OrderDetailPage({ params }: PageProps) {
           </button>
         )}
 
+        {/* Tombol Dispute & Confirm */}
         {order.status === 'waiting_approval' && !hasUnpaidFees && (
-          <button 
-            onClick={handleConfirmComplete}
-            disabled={isActionLoading}
-            className="flex-1 h-10 bg-green-600 text-white text-xs font-bold rounded-lg shadow-md shadow-green-100 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <Icons.CheckCircle /> Konfirmasi Selesai
-          </button>
+          <div className="flex-1 flex gap-2">
+             <button
+                onClick={() => { setActionReason(''); setActiveModal('dispute'); }}
+                disabled={isActionLoading}
+                className="w-10 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                title="Ajukan Komplain"
+             >
+                <Icons.Alert />
+             </button>
+             <button 
+                onClick={handleConfirmComplete}
+                disabled={isActionLoading}
+                className="flex-1 h-10 bg-green-600 text-white text-xs font-bold rounded-lg shadow-md shadow-green-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+             >
+                <Icons.CheckCircle /> Konfirmasi Selesai
+             </button>
+          </div>
         )}
 
         {order.status === 'completed' && (
@@ -728,12 +804,60 @@ export default function OrderDetailPage({ params }: PageProps) {
           </button>
         )}
         
+        {/* Fallback Status */}
         {!['pending', 'waiting_approval', 'completed'].includes(order.status) && (
            <div className="flex-1 h-10 flex items-center justify-center text-xs text-gray-400 font-medium bg-gray-50 rounded-lg border border-gray-100">
-             {order.status === 'cancelled' ? 'Pesanan Dibatalkan' : 'Tidak ada aksi'}
+             {order.status === 'cancelled' ? 'Pesanan Dibatalkan' : 
+              order.status === 'disputed' ? 'Dalam Proses Komplain' :
+              order.status === 'searching' ? 'Sedang Mencari Mitra...' :
+              'Dalam Proses Pengerjaan'
+             }
            </div>
         )}
       </div>
+
+      {/* 10. MODALS (Cancel & Dispute) */}
+      {activeModal && (
+        <div className="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+             <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 className="font-bold text-gray-900">
+                        {activeModal === 'cancel' ? 'Batalkan Pesanan' : 'Ajukan Komplain'}
+                    </h3>
+                    <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-gray-600"><Icons.XCircle /></button>
+                </div>
+                <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-3">
+                        {activeModal === 'cancel' 
+                           ? 'Apakah Anda yakin ingin membatalkan pesanan ini? Mohon berikan alasannya.'
+                           : 'Jelaskan masalah yang Anda alami dengan pekerjaan mitra.'
+                        }
+                    </p>
+                    <textarea 
+                        value={actionReason}
+                        onChange={(e) => setActionReason(e.target.value)}
+                        placeholder="Tulis alasan di sini..."
+                        className="w-full h-24 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                    />
+                </div>
+                <div className="p-4 bg-gray-50 flex gap-3 border-t border-gray-100">
+                    <button 
+                        onClick={() => setActiveModal(null)}
+                        className="flex-1 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold text-sm rounded-xl"
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        onClick={activeModal === 'cancel' ? handleCancelOrder : handleDisputeOrder}
+                        disabled={!actionReason.trim() || isActionLoading}
+                        className="flex-1 py-2.5 bg-red-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-100 disabled:bg-gray-300 disabled:shadow-none"
+                    >
+                        {isActionLoading ? 'Memproses...' : 'Kirim'}
+                    </button>
+                </div>
+             </div>
+        </div>
+      )}
 
       {/* LIGHTBOX MODAL */}
       {lightboxImage && (

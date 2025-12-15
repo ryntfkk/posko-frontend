@@ -1,85 +1,87 @@
 // src/features/orders/api.ts
-import axios from '@/lib/axios';
-import { CreateOrderPayload, OrderListResponse, OrderResponse, OrderStatus } from './types';
+import api from '@/lib/axios';
+import { CreateOrderPayload, Order } from './types';
 
-// Fetch single order
-export const fetchOrderById = async (orderId: string): Promise<OrderResponse> => {
-  const { data } = await axios.get(`/orders/${orderId}`);
-  return data;
-};
+// Create Order
+export const createOrder = (data: CreateOrderPayload) => {
+  const formData = new FormData();
 
-// List orders (Updated with Pagination)
-export const listOrders = async (
-  view?: 'customer' | 'provider', 
-  page: number = 1, 
-  limit: number = 10
-): Promise<OrderListResponse> => {
-  const params = {
-    ...(view ? { view } : {}),
-    page,
-    limit
-  };
-  const { data } = await axios.get('/orders', { params });
-  return data;
-};
+  // Append data JSON fields
+  formData.append('providerId', data.providerId || '');
+  formData.append('orderType', data.orderType);
+  formData.append('totalAmount', data.totalAmount.toString());
+  formData.append('scheduledAt', data.scheduledAt);
+  formData.append('orderNote', data.orderNote || '');
+  if (data.voucherCode) formData.append('voucherCode', data.voucherCode);
 
-// Create new order (Updated for S3 Upload & JSON Serialization)
-export const createOrder = async (payload: CreateOrderPayload): Promise<OrderResponse> => {
-  // Cek apakah ada file yang perlu diupload di attachments (bypass type checking dengan any)
-  const attachments = (payload.attachments as any[]) || [];
-  const hasFile = attachments.some((att: any) => att.file instanceof File);
+  // Append complex objects as JSON strings
+  formData.append('items', JSON.stringify(data.items));
+  formData.append('shippingAddress', JSON.stringify(data.shippingAddress));
+  formData.append('location', JSON.stringify(data.location));
+  formData.append('customerContact', JSON.stringify(data.customerContact));
+  formData.append('propertyDetails', JSON.stringify(data.propertyDetails));
+  formData.append('scheduledTimeSlot', JSON.stringify(data.scheduledTimeSlot));
 
-  if (hasFile) {
-    const formData = new FormData();
-
-    // 1. Append Attachments (Files)
-    attachments.forEach((att: any) => {
-        if (att.file instanceof File) {
-            formData.append('attachments', att.file);
-        }
+  // Append Attachments (File[])
+  if (data.attachments && data.attachments.length > 0) {
+    data.attachments.forEach((att: any) => {
+      if (att.file) {
+        formData.append('attachments', att.file);
+      }
     });
-
-    // 2. Append Data Fields (Stringify Object/Array agar terbaca Validator Backend)
-    (Object.keys(payload) as (keyof CreateOrderPayload)[]).forEach(key => {
-        if (key === 'attachments') return; // Skip attachments yang sudah diproses
-
-        const value = payload[key];
-        
-        if (value === undefined || value === null) return;
-
-        if (typeof value === 'object' && !(value instanceof Date)) {
-            // Serialize Object/Array ke JSON String (misal: items, address, dll)
-            // Ini penting agar backend menerima { items: [...] } bukan pecahan form data
-            formData.append(key, JSON.stringify(value));
-        } else if (value instanceof Date) {
-            formData.append(key, value.toISOString());
-        } else {
-            // Primitive values (number, string, boolean)
-            formData.append(key, String(value));
-        }
-    });
-    
-    // Header Content-Type: multipart/form-data otomatis diatur oleh axios/browser
-    const { data } = await axios.post('/orders', formData);
-    return data;
-  } else {
-    // Gunakan JSON biasa jika tidak ada file (Backward Compatibility)
-    const { data } = await axios.post('/orders', payload);
-    return data;
   }
+
+  return api.post<{ message: string; data: Order }>('/orders', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
 };
 
-// Update status
-export const updateOrderStatus = async (
-  orderId: string, 
-  status: OrderStatus
-): Promise<OrderResponse> => {
-  const { data } = await axios.patch(`/orders/${orderId}/status`, { status });
-  return data;
+// [FIXED] List Orders dengan Pagination
+export const listOrders = (view: 'customer' | 'provider' = 'customer', page = 1, limit = 10) => {
+  return api.get(`/orders?view=${view}&page=${page}&limit=${limit}`);
+};
+
+// Incoming Orders (Provider)
+export const listIncomingOrders = () => {
+  return api.get('/orders/incoming');
+};
+
+// Get Detail
+export const fetchOrderById = (orderId: string) => {
+  return api.get<{ message: string; data: Order }>(`/orders/${orderId}`);
+};
+
+// Update Status
+export const updateOrderStatus = (orderId: string, status: string) => {
+  return api.patch(`/orders/${orderId}/status`, { status });
+};
+
+// Accept Order (Provider)
+export const acceptOrder = (orderId: string) => {
+  return api.patch(`/orders/${orderId}/accept`);
+};
+
+// Reject Order (Provider)
+export const rejectOrder = (orderId: string) => {
+  return api.patch(`/orders/${orderId}/reject`);
+};
+
+// Cancel Order (Customer)
+export const cancelOrder = (orderId: string, reason: string) => {
+  return api.post(`/orders/${orderId}/cancel`, { reason });
+};
+
+// Dispute Order (Customer)
+export const disputeOrder = (orderId: string, reason: string) => {
+  return api.post(`/orders/${orderId}/dispute`, { reason });
+};
+
+// Request Additional Fee
+export const requestAdditionalFee = (orderId: string, data: { description: string; amount: number }) => {
+  return api.post(`/orders/${orderId}/additional-fee`, data);
 };
 
 // Reject Additional Fee
-export const rejectAdditionalFee = async (orderId: string, feeId: string): Promise<OrderResponse> => {
-  const { data } = await axios.put(`/orders/${orderId}/fees/${feeId}/reject`);
-  return data;
+export const rejectAdditionalFee = (orderId: string, feeId: string) => {
+  return api.put(`/orders/${orderId}/fees/${feeId}/reject`);
 };

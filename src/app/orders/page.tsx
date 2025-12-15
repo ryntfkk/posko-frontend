@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useInfiniteQuery } from '@tanstack/react-query'; // [NEW] Import React Query
+import { useInfiniteQuery } from '@tanstack/react-query'; 
 
 import { listOrders } from '@/features/orders/api'; 
 import { OrderStatus } from '@/features/orders/types';
@@ -17,7 +17,7 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function OrdersPage() {
-  // [REFACTOR] Mengganti manual fetch (useEffect) dengan useInfiniteQuery
+  // [FIXED] useInfiniteQuery Configuration
   const {
     data,
     isLoading,
@@ -25,30 +25,30 @@ export default function OrdersPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    refetch // Opsional: untuk pull-to-refresh jika dibutuhkan
+    refetch 
   } = useInfiniteQuery({
-    queryKey: ['orders', 'customer'], // Cache Key
+    queryKey: ['orders', 'customer'], 
     queryFn: async ({ pageParam = 1 }) => {
-      // Panggil API dengan parameter halaman
+      // API mengembalikan AxiosResponse
       const res = await listOrders('customer', pageParam as number, 10);
-      return res;
+      return res; 
     },
-    getNextPageParam: (lastPage) => {
-      // Logic menentukan halaman berikutnya dari metadata API
-      if (lastPage.meta && lastPage.meta.page < lastPage.meta.totalPages) {
-        return lastPage.meta.page + 1;
+    getNextPageParam: (lastPage: any) => {
+      // [FIXED] Akses meta dari lastPage.data.meta (karena lastPage adalah AxiosResponse)
+      const meta = lastPage?.data?.meta;
+      if (meta && meta.page < meta.totalPages) {
+        return meta.page + 1;
       }
-      return undefined; // Tidak ada halaman lagi
+      return undefined; 
     },
     initialPageParam: 1,
   });
 
-  // Ratakan data dari array of pages menjadi satu array order flat
-  const orders = data?.pages.flatMap((page) => page.data) || [];
+  // [FIXED] Ratakan data: Ambil array dari property .data.data
+  const orders = data?.pages.flatMap((page: any) => page.data.data).filter(Boolean) || [];
 
   const getStatusColor = (status: OrderStatus) => {
-    // ... (Logika warna tetap sama)
-    const colors: Record<OrderStatus, string> = {
+    const colors: Record<string, string> = {
       pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
       paid: 'bg-blue-50 text-blue-700 border-blue-200',
       searching: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -59,13 +59,13 @@ export default function OrdersPage() {
       completed: 'bg-green-50 text-green-700 border-green-200',
       cancelled: 'bg-red-50 text-red-700 border-red-200',
       failed: 'bg-gray-50 text-gray-700 border-gray-200',
+      disputed: 'bg-purple-50 text-purple-700 border-purple-200',
     };
     return colors[status] || colors.pending;
   };
 
   const formatStatus = (status: OrderStatus) => {
-    // ... (Logika text tetap sama)
-    const labels: Record<OrderStatus, string> = {
+    const labels: Record<string, string> = {
       pending: 'Menunggu Bayar',
       paid: 'Dibayar',
       searching: 'Mencari Mitra',
@@ -76,11 +76,11 @@ export default function OrdersPage() {
       completed: 'Selesai',
       cancelled: 'Dibatalkan',
       failed: 'Gagal',
+      disputed: 'Komplain',
     };
-    return labels[status] || status.replace(/_/g, ' ');
+    return labels[status] || (status ? status.replace(/_/g, ' ') : '-');
   };
 
-  // Loading State (Skeleton sederhana)
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -92,7 +92,6 @@ export default function OrdersPage() {
     );
   }
 
-  // Error State
   if (isError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -111,7 +110,6 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 font-sans">
-      {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="text-gray-600 hover:text-red-600 p-1 rounded-full hover:bg-gray-100">
@@ -139,11 +137,11 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
-            {orders.map((order) => {
-              // Helper untuk data provider (defensive check)
-              const providerData = typeof order.providerId === 'object' ? order.providerId : null;
+            {orders.map((order: any, index: number) => {
+              // [SAFETY] Defensive Checks
+              if (!order) return null;
               
-              // Helper icon service
+              const providerData = typeof order.providerId === 'object' ? order.providerId : null;
               const firstItem = order.items?.[0];
               const serviceIcon = firstItem?.serviceId?.iconUrl;
               const serviceName = firstItem?.name || 'Layanan';
@@ -151,27 +149,30 @@ export default function OrdersPage() {
                 ? `+${order.items.length - 1} lainnya` 
                 : '';
 
+              // [SAFETY] Gunakan index sebagai fallback key jika _id corrupt
+              const safeKey = order._id || `temp-order-${index}`;
+              const displayId = order.orderNumber || (order._id ? `#${order._id.slice(-6).toUpperCase()}` : '#PROCESSING');
+
               return (
                 <Link
-                  key={order._id}
-                  href={`/orders/${order._id}`}
+                  key={safeKey}
+                  href={`/orders/${order._id || '#'}`}
                   className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all group"
                 >
-                  {/* Header Card: No Order & Status */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="space-y-0.5">
                       <span className="text-[10px] text-gray-400 font-mono font-bold">
-                        {order.orderNumber || `#${order._id.slice(-6).toUpperCase()}`}
+                        {displayId}
                       </span>
                       <span className="text-xs text-gray-500 block">
-                        {new Date(order.createdAt).toLocaleDateString('id-ID', { 
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString('id-ID', { 
                           day: 'numeric', 
                           month: 'short', 
                           year: 'numeric', 
                           hour: '2-digit', 
                           minute: '2-digit', 
                           hour12: false 
-                        })}
+                        }) : '-'}
                       </span>
                     </div>
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
@@ -179,7 +180,6 @@ export default function OrdersPage() {
                     </span>
                   </div>
 
-                  {/* Body Card: Service Info */}
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
                       {serviceIcon ? (
@@ -209,7 +209,6 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  {/* Footer Card: Price & Schedule */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <div className="text-xs text-gray-500">
                       {order.scheduledAt && (
@@ -218,13 +217,12 @@ export default function OrdersPage() {
                         </span>
                       )}
                     </div>
-                    <p className="font-bold text-red-600">{formatCurrency(order.totalAmount)}</p>
+                    <p className="font-bold text-red-600">{formatCurrency(order.totalAmount || 0)}</p>
                   </div>
                 </Link>
               );
             })}
 
-            {/* Load More Button / Loading Indicator */}
             {hasNextPage && (
               <div className="mt-6 flex justify-center">
                 <button
@@ -244,7 +242,6 @@ export default function OrdersPage() {
               </div>
             )}
 
-            {/* End of List Indicator */}
             {!hasNextPage && orders.length > 0 && (
               <p className="text-center text-xs text-gray-400 mt-6 pb-6">Semua pesanan telah ditampilkan.</p>
             )}

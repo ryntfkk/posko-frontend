@@ -1,3 +1,4 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google"; 
 import "./globals.css";
@@ -5,6 +6,8 @@ import "leaflet/dist/leaflet.css";
 import BottomNav from "@/components/BottomNav"; 
 import QueryProvider from "@/providers/QueryProvider";
 import { LanguageProvider } from "@/context/LanguageContext";
+// [UPDATE] Import SocketProvider
+import { SocketProvider } from "@/context/SocketContext";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -28,12 +31,16 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <QueryProvider>
-          <LanguageProvider>
-            <main className="min-h-screen">
-              {children}
-            </main>
-            <BottomNav />
-          </LanguageProvider>
+          {/* [UPDATE] Wrap aplikasi dengan SocketProvider DI DALAM QueryProvider */}
+          {/* Karena SocketProvider menggunakan useQueryClient */}
+          <SocketProvider>
+            <LanguageProvider>
+              <main className="min-h-screen">
+                {children}
+              </main>
+              <BottomNav />
+            </LanguageProvider>
+          </SocketProvider>
         </QueryProvider>
       </body>
     </html>
