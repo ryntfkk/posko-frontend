@@ -50,8 +50,8 @@ export default function ProviderCalendarModal({
       bgClass = 'bg-red-50 text-red-600 border-red-100';
       label = 'Penuh';
     } else if (isBlocked) {
-      bgClass = 'bg-gray-100 text-gray-400 border-gray-200';
-      label = 'Libur';
+      bgClass = 'bg-red-50 text-red-600 border-red-100';
+      label = 'Penuh';
     }
 
     return (

@@ -2,26 +2,48 @@
 
 export default function ProviderSidebar() {
   return (
-    <div className="space-y-6">
-      <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-blue-800 text-xs leading-relaxed">
-        <p className="font-bold mb-1">✨ Jaminan Posko</p>
-        <p>
-          Layanan dari mitra ini dilindungi garansi layanan 7 hari dan asuransi pengerjaan.  Uang Anda aman hingga
-          pekerjaan selesai.
-        </p>
+    <div className="space-y-5 pr-2">
+      {/* Section 1: Jaminan (Clean List Item) */}
+      <div className="flex gap-3 items-start group">
+        <div className="shrink-0 mt-0.5 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
+           <span className="text-sm">✨</span>
+        </div>
+        <div>
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-1">Jaminan Posko</h3>
+          <p className="text-[11px] leading-relaxed text-gray-600">
+            Layanan dilindungi <span className="font-semibold text-gray-900">garansi 7 hari</span> & asuransi. Uang Anda aman hingga pekerjaan tuntas.
+          </p>
+        </div>
       </div>
 
-      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 text-gray-600 text-xs leading-relaxed">
-        <p className="font-bold mb-1 text-gray-800">💡 Tips Pemesanan</p>
-        <p>
-          Pastikan tanggal yang Anda pilih berwarna Hijau (Tersedia).  Tanggal Merah berarti Mitra sedang penuh atau
-          libur. 
-        </p>
+      {/* Divider Halus */}
+      <div className="h-px bg-gray-100 w-full ml-11"></div>
+
+      {/* Section 2: Tips (Clean List Item) */}
+      <div className="flex gap-3 items-start group">
+        <div className="shrink-0 mt-0.5 w-8 h-8 rounded-full bg-yellow-50 flex items-center justify-center text-yellow-600 border border-yellow-100">
+           <span className="text-sm">💡</span>
+        </div>
+        <div>
+          <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-1">Tips Pemesanan</h3>
+          <p className="text-[11px] leading-relaxed text-gray-600">
+            Pilih tanggal <span className="text-green-600 font-bold">Hijau</span> (Tersedia). Tanggal Merah berarti mitra sedang penuh/libur.
+          </p>
+        </div>
       </div>
 
-      <div className="bg-green-50 p-4 rounded-2xl border border-green-100 text-green-800 text-xs leading-relaxed">
-        <p className="font-bold mb-1">📞 Butuh Bantuan? </p>
-        <p>Hubungi CS Posko jika ada kendala dalam pemesanan.  Kami siap membantu 24/7.</p>
+      {/* Divider Halus */}
+      <div className="h-px bg-gray-100 w-full ml-11"></div>
+
+      {/* Section 3: Bantuan (Compact Action) */}
+      <div className="flex gap-3 items-center group cursor-pointer hover:bg-gray-50 -mx-2 p-2 rounded-lg transition-colors">
+        <div className="shrink-0 w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
+           <span className="text-sm">📞</span>
+        </div>
+        <div>
+          <h3 className="text-xs font-bold text-gray-900">Butuh Bantuan?</h3>
+          <p className="text-[10px] text-gray-500">Hubungi CS Posko 24/7</p>
+        </div>
       </div>
     </div>
   );

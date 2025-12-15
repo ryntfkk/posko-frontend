@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Provider } from '../types';
 import { ServiceItem } from './types';
 import { formatCurrency, formatDuration } from './utils';
-import { ClockIcon, CheckIcon, ServiceIcon } from './Icons';
+import { ServiceIcon } from './Icons';
 import { getUnitLabel } from '@/features/services/types';
 
 interface ProviderServicesContentProps {
@@ -16,108 +16,104 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
   const activeServices = (provider.services as ServiceItem[]).filter((s) => s.isActive);
 
   if (activeServices.length === 0) {
-    // Empty State: Padding dikurangi agar lebih compact (py-12 -> py-8)
     return (
-      <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-gray-200">
-        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-          <ServiceIcon className="w-5 h-5 text-gray-500"/>
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+          <ServiceIcon className="w-5 h-5 text-gray-400"/>
         </div>
-        <p className="text-gray-500 text-xs">Mitra ini belum memiliki layanan aktif.</p>
+        <p className="text-gray-500 text-xs">Belum ada layanan aktif.</p>
       </div>
     );
   }
 
   return (
-    // Mengubah dari Grid menjadi List (flex-col)
-    <div className="flex flex-col gap-3">
-      {activeServices.map((item) => {
+    <div className="flex flex-col">
+      {activeServices.map((item, index) => {
         const service = item.serviceId;
         const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel((service.unit as any) || 'unit');
         const durationText = formatDuration(service.estimatedDuration);
-        const hasDetails =
-          (service.includes && service.includes.length > 0) ||
-          (service.excludes && service.excludes.length > 0) ||
-          (service.requirements && service.requirements.length > 0);
+        
+        // Cek apakah item terakhir untuk menghilangkan border bottom
+        const isLast = index === activeServices.length - 1;
 
         return (
           <div
             key={service._id}
-            // LIST ITEM CONTAINER: Padding p-4 -> p-3. Rounded-2xl -> rounded-xl. Shadow lebih halus
-            className="relative flex items-start p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-red-200 hover:shadow-md transition-all group"
+            // LIST ITEM: Full width, border bottom halus, hover effect
+            className={`group relative flex items-start gap-3 py-4 px-4 lg:px-0 transition-colors hover:bg-gray-50 cursor-pointer ${
+                !isLast ? 'border-b border-gray-100' : ''
+            }`}
+            onClick={() => onSelectService(item)} // Klik seluruh baris membuka detail
           >
-            {/* Badge Promo: Tetap ringkas */}
-            {service.isPromo && service.discountPercent && service.discountPercent > 0 && (
-              <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 bg-red-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-md z-10">
-                -{service.discountPercent}%
-              </div>
-            )}
-
-            {/* Icon KIRI: Compact w-10 h-10 */}
-            <div className="w-10 h-10 shrink-0 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200 mr-3 group-hover:bg-red-50 group-hover:border-red-100 transition-colors">
-              <img src={service.iconUrl || '/file.svg'} alt="Icon" className="w-5 h-5 object-contain opacity-70" />
+            
+            {/* 1. Left Icon: Compact & Clean */}
+            <div className="shrink-0 pt-1">
+               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 overflow-hidden">
+                 <img 
+                    src={service.iconUrl || '/file.svg'} 
+                    alt={service.name} 
+                    className="w-5 h-5 lg:w-6 lg:h-6 object-contain opacity-80 group-hover:scale-110 transition-transform" 
+                 />
+               </div>
             </div>
 
-            {/* CONTENT UTAMA (Nama, Deskripsi, Badge) */}
-            <div className="flex-1 min-w-0">
-              {/* Header: Nama dan Kategori (text-sm & text-[10px]) */}
-              <h4 className="font-bold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-tight truncate">
-                {service.name}
-              </h4>
-              <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide mt-0.5 mb-1">
-                {service.category}
+            {/* 2. Main Content */}
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="flex justify-between items-start gap-2">
+                 {/* Judul Layanan */}
+                 <h4 className="font-bold text-gray-900 text-sm lg:text-base leading-snug group-hover:text-red-600 transition-colors line-clamp-2">
+                    {service.name}
+                 </h4>
+                 
+                 {/* Harga (Dipindah ke atas sejajar judul untuk efisiensi di mobile) */}
+                 <div className="text-right shrink-0">
+                    <p className="font-bold text-gray-900 text-sm lg:text-base whitespace-nowrap">
+                       {formatCurrency(item.price)}
+                    </p>
+                 </div>
+              </div>
+
+              {/* Deskripsi Singkat */}
+              <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed max-w-[90%]">
+                 {service.shortDescription || 'Layanan profesional dengan jaminan kualitas.'}
               </p>
 
-              {/* Short Description: text-xs line-clamp-1 */}
-              {service.shortDescription && (
-                <p className="text-xs text-gray-500 mb-2 line-clamp-1">{service.shortDescription}</p>
-              )}
+              {/* Meta Info Row: Duration, Unit, Promo */}
+              <div className="flex items-center flex-wrap gap-2 mt-2">
+                 
+                 {/* Unit Badge */}
+                 <span className="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 uppercase tracking-wide">
+                    / {unitDisplay}
+                 </span>
 
-              {/* Info Badges (Sangat Compact) */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {durationText && (
-                  <div className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded-full">
-                    <ClockIcon className="w-3 h-3" />
-                    <span>{durationText}</span>
-                  </div>
-                )}
-                {service.includes && service.includes.length > 0 && (
-                  <div className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
-                    <CheckIcon className="w-3 h-3" />
-                    <span>{service.includes.length} termasuk</span>
-                  </div>
-                )}
+                 {/* Duration Badge */}
+                 {durationText && (
+                    <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                       • {durationText}
+                    </span>
+                 )}
+
+                 {/* Promo Badge */}
+                 {service.isPromo && service.discountPercent && service.discountPercent > 0 && (
+                    <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-sm border border-red-100">
+                       Diskon {service.discountPercent}%
+                    </span>
+                 )}
               </div>
             </div>
 
-            {/* PRICE & ACTION KANAN (Shrink) */}
-            <div className="flex flex-col items-end justify-between ml-3 shrink-0 h-full pt-1">
-              <div>
-                {/* Price: text-lg -> text-base (ringkas) */}
-                <p className="font-black text-gray-900 text-base leading-none text-right">
-                  {formatCurrency(item.price)}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-0.5 text-right">/ {unitDisplay}</p>
-              </div>
-
-              {/* Button Action */}
-              <div className="flex items-center gap-1 mt-3">
-                {hasDetails && (
-                  <button
-                    onClick={() => onSelectService(item)}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline px-1 py-0.5"
-                  >
-                    Detail
-                  </button>
-                )}
-                {/* Tombol PILIH: Lebih kecil dan ringkas. text-[10px] */}
-                <Link
-                  href={`/checkout?type=direct&providerId=${provider._id}`}
-                  className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md transition-colors"
-                >
-                  Pilih
-                </Link>
-              </div>
+            {/* 3. Button "Add" (Optional / Shortcut) */}
+            <div className="self-center shrink-0 pl-1" onClick={(e) => e.stopPropagation()}>
+               <Link
+                 href={`/checkout?type=direct&providerId=${provider._id}`}
+                 className="flex items-center justify-center w-8 h-8 rounded-full border border-red-600 text-red-600 bg-white hover:bg-red-600 hover:text-white transition-all active:scale-90 shadow-sm"
+               >
+                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                   <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
+                 </svg>
+               </Link>
             </div>
+
           </div>
         );
       })}

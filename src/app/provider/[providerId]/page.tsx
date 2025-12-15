@@ -224,40 +224,61 @@ export default function ProviderProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-12 font-sans">
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 transition-all">
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
+    <div className="min-h-screen bg-white font-sans text-gray-900 pb-24 lg:pb-0">
+      
+      {/* HEADER: Minimalist Sticky */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
           <Link
             href="/"
-            className="p-2 -ml-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-1.5 -ml-2 text-gray-800 hover:text-red-600 hover:bg-gray-50 rounded-full transition-colors"
           >
             <BackIcon />
           </Link>
-          <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Profil Mitra</h1>
-          <div className="w-8"></div>
+          
+          <h1 className="text-sm font-bold text-gray-900 truncate max-w-[200px]">
+            {provider.userId?.fullName}
+          </h1>
+          
+          <div className="flex gap-2">
+            <button 
+              onClick={handleShare}
+              className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-full"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="max-w-6xl mx-auto px-4 lg:px-8 py-4 space-y-4">
-        {/* 1. HERO SECTION (Updated) */}
-        <ProviderHeroSection
-          provider={provider}
-          distance={distance}
-          isFavorited={isFavorited}
-          isSharing={isSharing}
-          onToggleFavorite={handleToggleFavorite}
-          onShare={handleShare}
-          onOpenCalendar={handleOpenCalendar}
-          onChat={handleChat}
-          onViewProfile={handleImageClick} // [UPDATE] Menghubungkan handler lightbox
-        />
+      {/* MAIN CONTENT WRAPPER */}
+      {/* Menggunakan max-w-6xl agar lebih lebar sedikit di desktop */}
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-12 items-start">
+          
+          {/* KOLOM UTAMA (KIRI) */}
+          {/* UPDATE: Ditambahkan lg:pr-12 agar Hero Section tidak menabrak Sidebar */}
+          <div className="lg:col-span-8 w-full lg:pr-12">
+            
+            {/* 1. HERO SECTION */}
+            <ProviderHeroSection
+              provider={provider}
+              distance={distance}
+              isFavorited={isFavorited}
+              isSharing={isSharing}
+              onToggleFavorite={handleToggleFavorite}
+              onShare={handleShare}
+              onOpenCalendar={handleOpenCalendar}
+              onChat={handleChat}
+              onViewProfile={handleImageClick}
+            />
 
-        {/* LAYOUT GRID UTAMA */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-          {/* KOLOM KIRI (Tab Section: Services & Docs) */}
-          <div className="lg:col-span-2">
+            {/* SEPARATOR HALUS (Mobile Only) */}
+            <div className="h-px bg-gray-100 w-full lg:hidden"></div>
+
+            {/* 2. TAB & LIST SECTION */}
             <ProviderTabSection
               provider={provider}
               activeTab={activeTab}
@@ -267,12 +288,14 @@ export default function ProviderProfilePage() {
             />
           </div>
 
-          {/* KOLOM KANAN (Info Tambahan) */}
-          <div className="hidden lg:block">
-            <ProviderSidebar />
+          {/* KOLOM KANAN (SIDEBAR DESKTOP) */}
+          {/* UPDATE: Padding kiri diperbesar (pl-10) agar konten tidak mepet garis batas */}
+          <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-gray-100 lg:pl-10 lg:py-8">
+             <ProviderSidebar />
           </div>
+
         </div>
-      </main>
+      </div>
 
       {/* MODALS */}
       <ProviderCalendarModal
