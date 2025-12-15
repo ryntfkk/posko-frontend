@@ -2,11 +2,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation'; // [UPDATE] Import useRouter
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import api from '@/lib/axios'; // [UPDATE] Import axios instance
-import { fetchProviderById, toggleFavorite, checkFavoriteStatus } from '@/features/providers/api'; // [UPDATE] Import checkFavoriteStatus
+import api from '@/lib/axios';
+import { fetchProviderById, toggleFavorite, checkFavoriteStatus } from '@/features/providers/api';
 import { fetchProfile } from '@/features/auth/api';
 import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
@@ -29,7 +29,7 @@ import {
 
 export default function ProviderProfilePage() {
   const params = useParams();
-  const router = useRouter(); // [UPDATE]
+  const router = useRouter();
   const providerId = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
 
   // Data State
@@ -41,7 +41,7 @@ export default function ProviderProfilePage() {
   // Interaction State
   const [isFavorited, setIsFavorited] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [isChatLoading, setIsChatLoading] = useState(false); // [BARU] Loading state chat
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Calendar State
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function ProviderProfilePage() {
           const userRes = await fetchProfile();
           setCurrentUser(userRes.data.profile);
 
-          // 2. [FIX] Check Initial Favorite Status
+          // 2. Check Initial Favorite Status
           try {
              const favRes = await checkFavoriteStatus(providerId);
              setIsFavorited(favRes.data.isFavorited);
@@ -123,17 +123,17 @@ export default function ProviderProfilePage() {
   };
 
   const handleToggleFavorite = async () => {
-    if (!provider || !provider.userId) return; // Safety check
+    if (!provider || !provider.userId) return;
     
-    // 1. Optimistic Update (UI Langsung Berubah)
+    // 1. Optimistic Update
     const oldIsFavorited = isFavorited;
-    const oldProvider = { ...provider }; // Shallow copy
+    const oldProvider = { ...provider };
     
     // Toggle state icon
     const newStatus = !oldIsFavorited;
     setIsFavorited(newStatus);
     
-    // Toggle counter (Handle type casting if field is missing in generic Provider type)
+    // Toggle counter
     const currentFavs = (provider as any).totalFavorites || 0;
     const newFavs = newStatus ? currentFavs + 1 : Math.max(0, currentFavs - 1);
     
@@ -155,7 +155,6 @@ export default function ProviderProfilePage() {
     }
   };
 
-  // [BARU] Handler Chat: Buat room jika belum ada, lalu redirect
   const handleChat = async () => {
     if (!currentUser) {
         alert('Silakan login terlebih dahulu untuk chat dengan mitra.');
@@ -169,11 +168,7 @@ export default function ProviderProfilePage() {
     setIsChatLoading(true);
 
     try {
-        // Panggil endpoint create room
-        // Payload: { targetUserId: string }
         await api.post('/chat', { targetUserId: provider.userId._id });
-        
-        // Redirect ke halaman chat (Next.js akan handle fetching list terbaru di sana)
         router.push('/chat');
     } catch (error: any) {
         console.error('Gagal memulai chat:', error);
@@ -246,7 +241,7 @@ export default function ProviderProfilePage() {
 
       {/* MAIN CONTENT */}
       <main className="max-w-6xl mx-auto px-4 lg:px-8 py-4 space-y-4">
-        {/* 1.HERO SECTION */}
+        {/* 1. HERO SECTION (Updated) */}
         <ProviderHeroSection
           provider={provider}
           distance={distance}
@@ -255,7 +250,8 @@ export default function ProviderProfilePage() {
           onToggleFavorite={handleToggleFavorite}
           onShare={handleShare}
           onOpenCalendar={handleOpenCalendar}
-          onChat={handleChat} // [BARU] Pass handler ke child
+          onChat={handleChat}
+          onViewProfile={handleImageClick} // [UPDATE] Menghubungkan handler lightbox
         />
 
         {/* LAYOUT GRID UTAMA */}

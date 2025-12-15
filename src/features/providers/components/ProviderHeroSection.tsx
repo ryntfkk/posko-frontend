@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { Provider } from '../types';
-import { ShareIcon, HeartIcon, CalendarIcon, ChatIcon } from './Icons'; // Pastikan ChatIcon ada/diimport
+import { ShareIcon, HeartIcon, CalendarIcon, ChatIcon } from './Icons';
 
 interface ProviderHeroSectionProps {
   provider: Provider;
@@ -12,7 +12,8 @@ interface ProviderHeroSectionProps {
   onToggleFavorite: () => void;
   onShare: () => void;
   onOpenCalendar: () => void;
-  onChat: () => void; // [BARU] Handler untuk Chat
+  onChat: () => void;
+  onViewProfile: (imageUrl: string) => void; // [BARU] Prop untuk handle klik foto
 }
 
 export default function ProviderHeroSection({
@@ -23,117 +24,137 @@ export default function ProviderHeroSection({
   onToggleFavorite,
   onShare,
   onOpenCalendar,
-  onChat, // [BARU]
+  onChat,
+  onViewProfile, // [BARU]
 }: ProviderHeroSectionProps) {
   const totalOrders = provider.totalCompletedOrders ?? 0;
-  const totalFavorites = (provider as any).totalFavorites ?? 0; 
+  const totalFavorites = (provider as any).totalFavorites ?? 0;
+
+  // Definisikan URL gambar di sini agar bisa dikirim ke handler onClick
+  const profileImageUrl = provider.userId?.profilePictureUrl ||
+    `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'default'}`;
 
   return (
-    <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 relative overflow-hidden group">
-      <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-red-50 to-transparent rounded-full blur-3xl opacity-60 -mr-10 -mt-10 pointer-events-none"></div>
+    <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-50 to-transparent rounded-full blur-2xl opacity-50 -mr-10 -mt-10 pointer-events-none"></div>
 
-      <div className="flex flex-col md:flex-row gap-6 relative z-10">
-        {/* Profile Picture */}
-        <div className="flex justify-center md:justify-start shrink-0">
-          <div className="relative w-28 h-28 lg:w-36 lg:h-36">
-            <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100 relative">
+      <div className="flex flex-col gap-4 relative z-10">
+        {/* TOP SECTION: Avatar & Basic Info */}
+        <div className="flex items-start gap-4">
+          {/* Avatar - GAYA BARU: Rounded Square & Clickable */}
+          <button 
+            onClick={() => onViewProfile(profileImageUrl)} // [BARU] Trigger lightbox saat klik
+            className="relative w-20 h-20 md:w-24 md:h-24 shrink-0 group cursor-pointer transition-transform active:scale-95 text-left"
+            title="Lihat foto profil"
+          >
+            <div className="w-full h-full rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-gray-50 relative">
               <Image
-                src={
-                  provider.userId?.profilePictureUrl ||
-                  `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'default'}`
-                }
+                src={profileImageUrl}
                 alt={provider.userId?.fullName || 'Mitra'}
                 fill
-                className="object-cover"
+                className="object-cover transition-opacity group-hover:opacity-90"
               />
             </div>
+            {/* Status Indicator */}
             <div
-              className={`absolute bottom-2 right-2 w-5 h-5 border-4 border-white rounded-full ${provider.isOnline ? 'bg-green-500' : 'bg-gray-400'}`}
-              title={provider.isOnline ? 'Online' : 'Offline'}
+              className={`absolute -bottom-1 -right-1 w-4 h-4 border-[3px] border-white rounded-full ${
+                provider.isOnline ? 'bg-green-500' : 'bg-gray-300'
+              } shadow-sm`}
             ></div>
+          </button>
+
+          {/* Info Column */}
+          <div className="flex-1 min-w-0 pt-0.5">
+            <div className="flex flex-col items-start">
+              {/* Nama & Badge Verified */}
+              <h2 className="text-base md:text-lg font-bold text-gray-900 leading-tight truncate w-full flex items-center gap-1.5">
+                {provider.userId?.fullName || 'Nama Tidak Tersedia'}
+                <span className="shrink-0 bg-blue-50 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-blue-100">
+                  ✓
+                </span>
+              </h2>
+              
+              {/* Lokasi & Jarak */}
+              <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                <span className="truncate max-w-[150px]">{provider.userId?.address?.city || 'Lokasi N/A'}</span>
+                <span>•</span>
+                <span className="font-medium text-gray-700">{distance}</span>
+              </p>
+
+              {/* Bio Singkat */}
+              <p className="text-xs text-gray-500 mt-2 leading-snug line-clamp-2">
+                {provider.userId?.bio || 'Siap membantu kebutuhan Anda secara profesional.'}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Info */}
-        <div className="flex-1 text-center md:text-left space-y-3">
-          <div>
-            <h2 className="text-2xl lg:text-3xl font-black text-gray-900 leading-tight flex flex-col md:flex-row items-center md:items-end gap-2 justify-center md:justify-start">
-              {provider.userId?.fullName || 'Nama Tidak Tersedia'}
-              <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full align-middle border border-blue-200">
-                Terverifikasi ✓
-              </span>
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {provider.userId?.address?.city || 'Lokasi tidak tersedia'} • {distance}
-            </p>
+        {/* MIDDLE SECTION: Stats Bar */}
+        <div className="grid grid-cols-3 divide-x divide-gray-100 border-y border-gray-50 py-3">
+          <div className="flex flex-col items-center px-2">
+            <div className="flex items-center gap-1">
+              <span className="text-yellow-400 text-xs">★</span>
+              <span className="text-sm font-bold text-gray-900">{(provider.rating ?? 0).toFixed(1)}</span>
+            </div>
+            <span className="text-[10px] text-gray-400 font-medium">Rating</span>
           </div>
 
-          <p className="text-gray-600 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0 bg-gray-50 p-3 rounded-xl border border-gray-100">
-            &quot;{provider.userId?.bio || 'Teknisi berpengalaman yang siap membantu masalah Anda dengan cepat dan profesional.'}&quot;
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-            {/* Stats Block */}
-            <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm w-full sm:w-auto justify-center sm:justify-start">
-              <div className="flex items-center gap-1.5 pr-2">
-                <span className="text-yellow-500 text-lg">★</span>
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-black text-gray-900 leading-none">
-                    {(provider.rating ?? 0).toFixed(1)}
-                  </span>
-                  <span className="text-[9px] text-gray-400 font-bold uppercase">Rating</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-start pl-4">
-                <span className="text-sm font-black text-gray-900 leading-none">
-                  {totalOrders > 0 ? (totalOrders > 99 ? '99+' : totalOrders) : '0'}
-                </span>
-                <span className="text-[9px] text-gray-400 font-bold uppercase">Pesanan</span>
-              </div>
-
-              <div className="flex flex-col items-start pl-4">
-                <span className="text-sm font-black text-gray-900 leading-none">
-                  {totalFavorites > 0 ? (totalFavorites > 999 ? '999+' : totalFavorites) : '0'}
-                </span>
-                <span className="text-[9px] text-gray-400 font-bold uppercase">Favorit</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
-              {/* [BARU] Tombol Chat */}
-              <button
-                onClick={onChat}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-colors shadow-md active:scale-95"
-              >
-                <ChatIcon className="w-4 h-4 text-white" />
-                <span className="text-xs font-bold">Chat Mitra</span>
-              </button>
-
-              <button
-                onClick={onOpenCalendar}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-              >
-                <CalendarIcon />
-                <span className="text-xs font-bold">Jadwal</span>
-              </button>
-
-              <button
-                onClick={onToggleFavorite}
-                className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200' : 'border-gray-200 hover:bg-gray-50'}`}
-              >
-                <HeartIcon solid={isFavorited} />
-              </button>
-
-              <button
-                onClick={onShare}
-                className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors ${isSharing ? 'scale-95' : ''}`}
-              >
-                <ShareIcon />
-              </button>
-            </div>
+          <div className="flex flex-col items-center px-2">
+            <span className="text-sm font-bold text-gray-900">
+              {totalOrders > 99 ? '99+' : totalOrders}
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium">Pesanan</span>
           </div>
+
+          <div className="flex flex-col items-center px-2">
+            <span className="text-sm font-bold text-gray-900">
+              {totalFavorites > 999 ? '999+' : totalFavorites}
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium">Favorit</span>
+          </div>
+        </div>
+
+        {/* BOTTOM SECTION: Action Buttons */}
+        <div className="flex gap-2">
+          {/* Chat Button */}
+          <button
+            onClick={onChat}
+            className="flex-1 h-9 flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-gray-800 active:scale-95 transition-all"
+          >
+            <ChatIcon className="w-3.5 h-3.5" />
+            <span className="text-xs font-bold">Chat</span>
+          </button>
+
+          {/* Jadwal Button */}
+          <button
+            onClick={onOpenCalendar}
+            className="flex-1 h-9 flex items-center justify-center gap-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors"
+          >
+            <CalendarIcon className="w-3.5 h-3.5" />
+            <span className="text-xs font-bold">Jadwal</span>
+          </button>
+
+          {/* Icon Only Buttons */}
+          <button
+            onClick={onToggleFavorite}
+            className={`h-9 w-9 flex items-center justify-center rounded-xl border transition-colors ${
+              isFavorited
+                ? 'bg-red-50 border-red-200 text-red-500'
+                : 'bg-white border-gray-200 text-gray-400 hover:bg-gray-50'
+            }`}
+          >
+            <HeartIcon solid={isFavorited} className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onShare}
+            className={`h-9 w-9 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors ${
+              isSharing ? 'scale-90 bg-gray-100' : ''
+            }`}
+          >
+            <ShareIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </section>
