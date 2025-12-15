@@ -13,12 +13,11 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0, // [UPDATE] Hapus desimal agar lebih ringkas
+    maximumFractionDigits: 0, 
   }).format(amount);
 };
 
 export default function OrdersPage() {
-  // [FIXED] useInfiniteQuery Configuration
   const {
     data,
     isLoading,
@@ -30,12 +29,10 @@ export default function OrdersPage() {
   } = useInfiniteQuery({
     queryKey: ['orders', 'customer'], 
     queryFn: async ({ pageParam = 1 }) => {
-      // API mengembalikan AxiosResponse
       const res = await listOrders('customer', pageParam as number, 10);
       return res; 
     },
     getNextPageParam: (lastPage: any) => {
-      // [FIXED] Akses meta dari lastPage.data.meta (karena lastPage adalah AxiosResponse)
       const meta = lastPage?.data?.meta;
       if (meta && meta.page < meta.totalPages) {
         return meta.page + 1;
@@ -45,11 +42,9 @@ export default function OrdersPage() {
     initialPageParam: 1,
   });
 
-  // [FIXED] Ratakan data: Ambil array dari property .data.data
   const orders = data?.pages.flatMap((page: any) => page.data.data).filter(Boolean) || [];
 
   const getStatusColor = (status: OrderStatus) => {
-    // [UPDATE] Warna lebih subtle (border dikurangi opacity-nya)
     const colors: Record<string, string> = {
       pending: 'bg-amber-50 text-amber-700 border-amber-100',
       paid: 'bg-blue-50 text-blue-700 border-blue-100',
@@ -72,9 +67,9 @@ export default function OrdersPage() {
       paid: 'Dibayar',
       searching: 'Mencari Mitra',
       accepted: 'Diterima',
-      on_the_way: 'Sedang Jalan', // [UPDATE] Wording lebih pendek
+      on_the_way: 'Sedang Jalan',
       working: 'Dikerjakan',
-      waiting_approval: 'Konfirmasi', // [UPDATE] Wording lebih pendek
+      waiting_approval: 'Konfirmasi',
       completed: 'Selesai',
       cancelled: 'Dibatalkan',
       failed: 'Gagal',
@@ -111,7 +106,8 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-24 font-sans text-gray-900">
+    // [UPDATE] Mengubah bg-gray-50/50 menjadi bg-white solid agar menutupi gradient global body
+    <div className="min-h-screen bg-white pb-24 font-sans text-gray-900">
       {/* HEADER: Sticky & Compact */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-30 px-4 h-14 flex items-center justify-between border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-3">
@@ -122,10 +118,9 @@ export default function OrdersPage() {
           </Link>
           <h1 className="text-sm font-bold tracking-tight">Riwayat Pesanan</h1>
         </div>
-        {/* Bisa ditambahkan tombol filter/search disini di masa depan */}
       </header>
 
-      {/* MAIN CONTENT: High Density Grid */}
+      {/* MAIN CONTENT */}
       <main className="container max-w-5xl mx-auto px-4 py-4 space-y-4">
         {orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -142,10 +137,8 @@ export default function OrdersPage() {
           </div>
         ) : (
           <>
-            {/* GRID LAYOUT START: 1 Kolom (HP), 2 Kolom (Tablet), 3 Kolom (Desktop) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {orders.map((order: any, index: number) => {
-                // [SAFETY] Defensive Checks
                 if (!order) return null;
                 
                 const providerData = typeof order.providerId === 'object' ? order.providerId : null;
@@ -153,8 +146,6 @@ export default function OrdersPage() {
                 const serviceIcon = firstItem?.serviceId?.iconUrl;
                 const serviceName = firstItem?.name || 'Layanan';
                 const moreItemsCount = order.items && order.items.length > 1 ? order.items.length - 1 : 0;
-
-                // [SAFETY] Gunakan index sebagai fallback key jika _id corrupt
                 const safeKey = order._id || `temp-order-${index}`;
                 const displayId = order.orderNumber || (order._id ? `#${order._id.slice(-6).toUpperCase()}` : '#PROCESSING');
 
@@ -243,7 +234,6 @@ export default function OrdersPage() {
                 );
               })}
             </div>
-            {/* GRID LAYOUT END */}
 
             {hasNextPage && (
               <div className="mt-8 flex justify-center pb-8">

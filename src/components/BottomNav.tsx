@@ -3,11 +3,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useLanguage } from '@/context/LanguageContext'; // [BARU]
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { t } = useLanguage(); // [BARU]
+  const { t } = useLanguage();
   
   // Helper untuk cek active state
   const isActive = (path: string) => {
@@ -16,12 +16,23 @@ export default function BottomNav() {
     return false;
   };
 
-  // Logic: Sembunyikan navigasi di halaman Auth DAN Halaman Detail Order
-  // Penjelasan: Kita ingin Nav muncul di '/orders' (List), tapi HILANG di '/orders/123' (Detail)
-  // Jadi jika path dimulai dengan '/orders/' tapi BUKAN '/orders' persis, itu adalah detail page.
+  // --- LOGIC VISIBILITAS NAVIGASI ---
+  // 1. Cek halaman detail order: path '/orders/...' tapi bukan '/orders'
   const isOrderDetailPage = pathname.startsWith('/orders/') && pathname !== '/orders';
+  
+  // 2. Cek halaman profil mitra/provider
+  const isProviderPage = pathname.startsWith('/provider/');
 
-  if (pathname.startsWith('/login') || pathname.startsWith('/register') || isOrderDetailPage) {
+  // 3. List halaman statis yang harus disembunyikan
+  const hiddenStaticPaths = ['/login', '/register', '/checkout', '/order/summary'];
+
+  // GABUNGKAN SEMUA KONDISI:
+  // Jika salah satu kondisi terpenuhi, return null (jangan tampilkan Nav)
+  if (
+    hiddenStaticPaths.includes(pathname) || 
+    isOrderDetailPage || 
+    isProviderPage
+  ) {
     return null;
   }
 
