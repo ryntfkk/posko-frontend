@@ -39,12 +39,36 @@ export default function ProfileHeroSection({
   const rating = provider?.rating ?? 0;
   const totalFavorites = provider?.totalFavorites ?? 0;
 
-  // Definisikan URL gambar (Ambil dari User, bukan Provider)
+  // Definisikan URL gambar (Ambil dari User, karena Provider tidak punya field foto profil terpisah)
   const profileImageUrl = user.profilePictureUrl ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || user.fullName || 'default'}`;
 
   // Cek Status Verifikasi
   const isVerified = provider?.verificationStatus === 'verified';
+
+  // [PERBAIKAN UTAMA] Logika Penentuan Alamat
+  // Jika ini adalah profil MITRA (provider ada), kita WAJIB menampilkan alamat Mitra (provider.location).
+  // Jangan gunakan user.address (alamat rumah) agar tidak terjadi kesalahan seperti "Surabaya" vs "Semarang".
+  
+  let displayLocation = 'Lokasi belum diatur';
+
+  if (isProvider && provider) {
+      // Ambil dari object location provider
+      const addressData = provider.location?.address;
+      
+      if (addressData) {
+          // Prioritas: Kota -> Kecamatan -> Provinsi -> Full Address
+          displayLocation = addressData.city || 
+                            addressData.district || 
+                            addressData.province || 
+                            (addressData.fullAddress ? 'Lokasi Mitra' : 'Lokasi belum diatur');
+      } else {
+          displayLocation = 'Lokasi Mitra belum diatur';
+      }
+  } else {
+      // Jika USER BIASA (Bukan Mitra), barulah gunakan alamat dari profil user
+      displayLocation = user.address?.city || 'Kota tidak tersedia';
+  }
 
   return (
     <section className="bg-white px-4 pt-6 pb-4 relative">
@@ -83,7 +107,7 @@ export default function ProfileHeroSection({
                     className="flex flex-col items-center group cursor-pointer"
                   >
                       <span className="font-bold text-lg lg:text-2xl text-gray-900 flex items-center gap-1 group-hover:text-yellow-600 transition-colors">
-                          {rating.toFixed(1)} <span className="text-yellow-500 text-sm lg:text-lg">★</span>
+                          {rating.toFixed(1)}
                       </span>
                       <span className="text-xs lg:text-sm text-gray-500">Rating</span>
                   </button>
@@ -135,7 +159,9 @@ export default function ProfileHeroSection({
             <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                 <span className="text-gray-900 font-medium">@{user.username}</span>
                 <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{user.address?.city || 'Kota tidak tersedia'}</span>
+                {/* [UPDATE] Menampilkan displayLocation yang sudah dikalkulasi dengan benar */}
+                <span className="font-medium text-gray-700">{displayLocation}</span>
+                
                 {isProvider && (
                   <>
                     <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
@@ -212,4 +238,4 @@ export default function ProfileHeroSection({
 
     </section>
   );
-}   
+}
