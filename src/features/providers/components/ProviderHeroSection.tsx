@@ -39,12 +39,40 @@ export default function ProfileHeroSection({
   const rating = provider?.rating ?? 0;
   const totalFavorites = provider?.totalFavorites ?? 0;
 
-  // Definisikan URL gambar (Ambil dari User, bukan Provider)
+  // Definisikan URL gambar (Ambil dari User, karena Provider tidak punya field foto profil terpisah biasanya)
   const profileImageUrl = user.profilePictureUrl ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || user.fullName || 'default'}`;
 
   // Cek Status Verifikasi
   const isVerified = provider?.verificationStatus === 'verified';
+
+  // [FIX CRITICAL] Logika Penentuan Alamat (Strict Mode)
+  // Masalah sebelumnya: Kode melakukan fallback ke user.address jika data provider tidak lengkap, 
+  // menyebabkan alamat rumah (Surabaya) tampil menggantikan alamat operasional (Semarang).
+  // Solusi: Jika isProvider = true, KITA HANYA MENGAMBIL DARI PROVIDER.
+  
+  let displayLocation = 'Lokasi belum diatur';
+
+  if (isProvider && provider) {
+      // Akses aman ke properti address
+      // Struktur DB: location: { address: { city, district, province ... } }
+      const addressData = provider.location?.address;
+      
+      if (addressData) {
+          // Prioritas: Kota -> Kecamatan -> Provinsi -> Full Address
+          // Kita ambil data yang tersedia di object address provider
+          displayLocation = addressData.city || 
+                            addressData.district || 
+                            addressData.province || 
+                            (addressData.fullAddress ? 'Lokasi Mitra' : 'Lokasi belum diatur');
+      } else {
+          // Jika provider ada tapi object location/address kosong/rusak
+          displayLocation = 'Lokasi Mitra belum diatur';
+      }
+  } else {
+      // Jika USER BIASA (Bukan Mitra), barulah gunakan alamat dari profil user
+      displayLocation = user.address?.city || 'Kota tidak tersedia';
+  }
 
   return (
     <section className="bg-white px-4 pt-6 pb-4 relative">
@@ -135,7 +163,9 @@ export default function ProfileHeroSection({
             <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
                 <span className="text-gray-900 font-medium">@{user.username}</span>
                 <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{user.address?.city || 'Kota tidak tersedia'}</span>
+                {/* [UPDATE] Tampilkan Lokasi dengan variabel displayLocation yang sudah strict */}
+                <span className="font-medium text-gray-700">{displayLocation}</span>
+                
                 {isProvider && (
                   <>
                     <span className="w-1 h-1 bg-gray-400 rounded-full"></span>

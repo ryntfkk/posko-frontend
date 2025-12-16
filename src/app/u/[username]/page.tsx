@@ -98,7 +98,7 @@ export default function PublicProfilePage() {
             }
           }
         } else {
-          setDistance('Login untuk Jarak');
+          setDistance('Login untuk lihat Jarak');
         }
       } catch (error) {
         console.error('Gagal memuat data profil:', error);
