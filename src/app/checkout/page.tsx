@@ -533,10 +533,12 @@ function CheckoutContent() {
                     {checkoutType === 'direct' && provider && (
                         <div className="flex items-start gap-4 py-4 px-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
                              <div className="relative w-14 h-14 rounded-full overflow-hidden bg-white shadow-sm border-2 border-white shrink-0">
+                                {/* [PERBAIKAN] Tambahkan properti sizes agar tidak warning */}
                                 <Image
                                 src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId.fullName}`}
                                 alt={provider.userId.fullName}
                                 fill
+                                sizes="56px"
                                 className="object-cover"
                                 />
                             </div>

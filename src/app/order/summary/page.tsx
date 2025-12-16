@@ -397,9 +397,7 @@ function OrderSummaryContent() {
       const finalAmount = Math.max(0, currentTotalAmount + adminFee - discountVal);
 
       // [CRITICAL UPDATE] Menambahkan adminFee dan discountAmount ke payload
-      // Pastikan CreateOrderPayload di types.ts sudah support field ini, 
-      // atau gunakan casting `as any` jika type belum diupdate.
-      const orderPayload: any = { // Menggunakan any sementara untuk menghindari error type jika types.ts belum diupdate
+      const orderPayload: any = { 
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
         totalAmount: finalAmount,
@@ -439,14 +437,31 @@ function OrderSummaryContent() {
 
       console.log("1. Membuat Order...", orderPayload);
       const orderRes = await createOrder(orderPayload);
-      const orderId = orderRes.data._id;
-      const orderNumber = orderRes.data.orderNumber;
       
-      console.log("2. Meminta Token Pembayaran...");
-      const paymentRes = await createPayment(orderId);
-      const snapToken = paymentRes.data.snapToken;
+      // [FIX] Mengambil data ID dan Number dengan benar dari struktur response Axios (createOrder masih return AxiosResponse)
+      // Response backend: { message: "...", data: { _id: "...", orderNumber: "..." } }
+      const orderData = orderRes.data.data; 
+      const orderId = orderData._id;
+      const orderNumber = orderData.orderNumber;
+      
+      console.log("2. Meminta Token Pembayaran...", { orderId });
+      
+      if (!orderId) {
+        throw new Error("Gagal mendapatkan Order ID dari server.");
+      }
 
-      console.log("3. Membuka Snap Midtrans...");
+      // [FIX CRITICAL] createPayment di api.ts mengembalikan response.data langsung (sudah unwrapped)
+      const paymentRes = await createPayment(orderId);
+      
+      // [FIX] Karena sudah unwrapped, strukturnya langsung { message: '...', data: { snapToken: '...' } }
+      const paymentData = paymentRes.data; 
+      const snapToken = paymentData.snapToken;
+
+      console.log("3. Membuka Snap Midtrans...", { snapToken });
+      if (!snapToken) {
+          throw new Error("Gagal mendapatkan Snap Token dari server pembayaran.");
+      }
+
       if (window.snap) {
         window.snap.pay(snapToken, {
           onSuccess: (result) => {

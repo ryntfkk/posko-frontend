@@ -7,6 +7,7 @@ import L from 'leaflet';
 import { useEffect, useState, useCallback } from 'react';
 
 // --- 1. Konfigurasi Icon Leaflet (MERAH) ---
+// Kita cek window dulu agar aman di SSR (meskipun sudah dynamic import, jaga-jaga)
 const RedIcon = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -16,6 +17,7 @@ const RedIcon = L.icon({
   shadowSize: [41, 41]
 });
 
+// Override default icon
 L.Marker.prototype.options.icon = RedIcon;
 
 interface LocationPickerProps {
@@ -77,7 +79,8 @@ function MapControls({ onStartLocate }: { onStartLocate: () => void }) {
   const map = useMap();
 
   useEffect(() => {
-    const customControl = L.Control.extend({
+    // Definisi class control di dalam useEffect agar akses ke L aman
+    const CustomControl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
         const container = L.DomUtil.create('div', 'leaflet-control flex flex-col gap-2 !mb-14 !mr-4');
@@ -127,7 +130,7 @@ function MapControls({ onStartLocate }: { onStartLocate: () => void }) {
       },
     });
     
-    const controlInstance = new customControl();
+    const controlInstance = new CustomControl();
     map.addControl(controlInstance);
 
     return () => {
@@ -176,6 +179,12 @@ function PermissionHelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 export default function LocationPicker({ onLocationSelect, initialLat, initialLng }: LocationPickerProps) {
   const [showHelp, setShowHelp] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  
+  // [PERBAIKAN UTAMA]
+  // Kita gunakan state 'mapKey' yang di-generate sekali saat mount.
+  // Ini memaksa React untuk merender ulang komponen MapContainer dengan key yang unik
+  // setiap kali komponen LocationPicker ini di-mount ulang, mencegah error "Map container is already initialized".
+  const [mapKey] = useState(() => `map-${Date.now()}`);
 
   // 1. Handle Selesai (Sukses)
   const handleEndLocate = useCallback(() => {
@@ -215,7 +224,9 @@ export default function LocationPicker({ onLocationSelect, initialLat, initialLn
         </div>
       )}
 
+      {/* [PERBAIKAN] Tambahkan prop key={mapKey} */}
       <MapContainer 
+        key={mapKey}
         center={[-6.200000, 106.816666]} 
         zoom={13} 
         scrollWheelZoom={true} 

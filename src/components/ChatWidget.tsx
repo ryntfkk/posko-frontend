@@ -34,22 +34,18 @@ interface ChatRoom {
 
 // --- HELPER SOCKET URL ---
 const getSocketUrl = () => {
-  // 1. Prioritas Utama: Env Var khusus Socket
   if (process.env.NEXT_PUBLIC_SOCKET_URL) {
     return process.env.NEXT_PUBLIC_SOCKET_URL.trim();
   }
   
-  // 2. Prioritas Kedua: Ambil Origin dari API URL
   if (process.env.NEXT_PUBLIC_API_URL) {
     try {
       const url = new URL(process.env.NEXT_PUBLIC_API_URL);
-      return url.origin; // Contoh: 'https://api.poskojasa.com/api' -> 'https://api.poskojasa.com'
+      return url.origin; 
     } catch (e) {
       console.error('Invalid API URL in env', e);
     }
   }
-  
-  // 3. Fallback Terakhir (Local dev)
   return 'http://localhost:4000';
 };
 
@@ -59,6 +55,7 @@ export default function ChatWidget({ user }: { user: User }) {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
+  // [PERBAIKAN] Socket Ref untuk mencegah double connection
   const socketRef = useRef<Socket | null>(null);
   
   const [isUnread, setIsUnread] = useState(false);
@@ -68,62 +65,71 @@ export default function ChatWidget({ user }: { user: User }) {
   const myId = user?._id || user?.userId;
 
   useEffect(() => {
-    const token = localStorage.getItem('posko_token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('posko_token') : null;
     if (!token) return;
 
+    // Load rooms
     api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
 
-    const newSocket = io(SOCKET_URL, { 
-      auth: { token },
-      path: '/socket.io', // Default path socket.io
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5
-    });
+    // [PERBAIKAN] Cek apakah socket sudah ada
+    if (!socketRef.current) {
+        const newSocket = io(SOCKET_URL, { 
+          auth: { token },
+          path: '/socket.io',
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionDelay: 1000,
+          reconnectionAttempts: 5,
+          autoConnect: false // [PERBAIKAN] Matikan auto connect
+        });
 
-    newSocket.on('connect', () => {
-      console.log('✅ ChatWidget Socket connected:', newSocket.id);
-    });
+        newSocket.on('connect', () => {
+          // console.log('✅ ChatWidget Socket connected:', newSocket.id);
+        });
 
-    newSocket.on('connect_error', (error) => {
-      // Hanya log sebagai warning agar tidak spam error merah di console saat dev
-      console.warn('⚠️ ChatWidget Socket connection warning:', error.message);
-    });
+        newSocket.on('connect_error', (error) => {
+          console.warn('⚠️ ChatWidget Socket connection warning:', error.message);
+        });
 
-    newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
-      setRooms(prev => {
-        const roomIndex = prev.findIndex(r => r._id === data.roomId);
-        if (roomIndex === -1) return prev; 
+        newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
+          setRooms(prev => {
+            const roomIndex = prev.findIndex(r => r._id === data.roomId);
+            if (roomIndex === -1) return prev; 
 
-        const updatedRoom = { 
-            ...prev[roomIndex], 
-            messages: [...prev[roomIndex].messages, data.message],
-            updatedAt: new Date().toISOString()
-        };
-        const newRooms = [...prev];
-        newRooms.splice(roomIndex, 1);
-        newRooms.unshift(updatedRoom);
-        return newRooms;
-      });
+            const updatedRoom = { 
+                ...prev[roomIndex], 
+                messages: [...prev[roomIndex].messages, data.message],
+                updatedAt: new Date().toISOString()
+            };
+            const newRooms = [...prev];
+            newRooms.splice(roomIndex, 1);
+            newRooms.unshift(updatedRoom);
+            return newRooms;
+          });
 
-      setActiveRoom(current => {
-        if (current && current._id === data.roomId) {
-          return { ...current, messages: [...current.messages, data.message] };
-        }
-        if (!current || current._id !== data.roomId) setIsUnread(true);
-        return current;
-      });
-    });
+          setActiveRoom(current => {
+            if (current && current._id === data.roomId) {
+              return { ...current, messages: [...current.messages, data.message] };
+            }
+            if (!current || current._id !== data.roomId) setIsUnread(true);
+            return current;
+          });
+        });
 
-    socketRef.current = newSocket;
+        socketRef.current = newSocket;
+    }
 
+    // [PERBAIKAN] Connect manual
+    const socket = socketRef.current;
+    if (socket && !socket.connected) {
+        socket.connect();
+    }
+
+    // Cleanup hanya saat komponen benar-benar unmount (navigasi halaman)
     return () => { 
-      // console.log('🔌 Disconnecting ChatWidget socket...');
-      // Bersihkan semua listeners sebelum disconnect untuk mencegah memory leak
-      newSocket.removeAllListeners();
-      newSocket.disconnect(); 
-      socketRef.current = null;
+        // Di React 18, cleanup sering dipanggil saat dev mode.
+        // Kita biarkan socket tetap hidup di ref selama sesi user aktif.
+        // Jika user logout, socket akan putus karena token invalid.
     };
   }, [SOCKET_URL]);
 
