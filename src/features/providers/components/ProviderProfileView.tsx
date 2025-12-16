@@ -1,8 +1,8 @@
-// src/app/provider/[providerId]/page.tsx
+// src/features/providers/components/ProviderProfileView.tsx
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import api from '@/lib/axios';
@@ -27,11 +27,13 @@ import {
   ProviderStickyBottomCTA,
 } from '@/features/providers/components';
 
-export default function ProviderProfilePage() {
-  const params = useParams();
+// [MODIFIED] Menerima identifier sebagai props
+interface Props {
+  identifier: string; 
+}
+
+export default function ProviderProfileView({ identifier }: Props) {
   const router = useRouter();
-  // Bisa berupa ID (lama) atau Username (baru)
-  const identifier = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
 
   // Data State
   const [provider, setProvider] = useState<Provider | null>(null);
@@ -64,7 +66,7 @@ export default function ProviderProfilePage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        // Fetch Provider (Backend sudah support ID atau Username)
+        // Backend kita sekarang "Smart", dia akan cek apakah identifier ini ID atau Username
         const providerRes = await fetchProviderById(identifier);
         const providerData = providerRes.data;
         setProvider(providerData);
@@ -76,7 +78,6 @@ export default function ProviderProfilePage() {
           setCurrentUser(userRes.data.profile);
 
           // 2. Check Initial Favorite Status
-          // [FIX] Gunakan providerData._id (ID asli), bukan identifier (yang mungkin username)
           if (providerData?._id) {
             try {
                const favRes = await checkFavoriteStatus(providerData._id);
@@ -112,12 +113,13 @@ export default function ProviderProfilePage() {
   const handleShare = async () => {
     setIsSharing(true);
     
-    // [FIX] Gunakan Username untuk link share jika ada, fallback ke URL saat ini
-    // Pastikan tipe User di Provider sudah update di types.ts (tambahkan username?: string)
+    // [MODIFIED] Logika Smart Share URL
+    // Selalu prioritaskan link /u/username jika ada, agar lebih profesional
     const username = (provider?.userId as any)?.username;
+    
     const shareUrl = username 
-      ? `${window.location.origin}/provider/${username}`
-      : window.location.href;
+      ? `${window.location.origin}/u/${username}`
+      : window.location.href; // Fallback
 
     if (navigator.share && provider) {
       try {
@@ -131,7 +133,7 @@ export default function ProviderProfilePage() {
       }
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert('Link profil tersalin!');
+      alert('Link profil tersalin: ' + shareUrl);
     }
     setTimeout(() => setIsSharing(false), 500);
   };
@@ -139,15 +141,12 @@ export default function ProviderProfilePage() {
   const handleToggleFavorite = async () => {
     if (!provider || !provider.userId) return;
     
-    // 1. Optimistic Update
     const oldIsFavorited = isFavorited;
     const oldProvider = { ...provider };
     
-    // Toggle state icon
     const newStatus = !oldIsFavorited;
     setIsFavorited(newStatus);
     
-    // Toggle counter
     const currentFavs = (provider as any).totalFavorites || 0;
     const newFavs = newStatus ? currentFavs + 1 : Math.max(0, currentFavs - 1);
     
@@ -158,11 +157,9 @@ export default function ProviderProfilePage() {
     } as Provider);
 
     try {
-        // 2. Call API (Gunakan ID asli provider)
         await toggleFavorite(provider._id);
     } catch (error) {
         console.error('Gagal update favorit:', error);
-        // 3. Revert jika gagal
         setIsFavorited(oldIsFavorited);
         setProvider(oldProvider);
         alert('Gagal menyimpan favorit. Silakan coba lagi.');

@@ -39,6 +39,8 @@ interface DecodedToken {
 export default function LoginPage() {
   const router = useRouter();
   
+  // Kita tetap gunakan nama variabel 'email' untuk konsistensi dengan API,
+  // tapi secara fungsi ini menampung "Identifier" (Email atau Username)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -69,10 +71,12 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (! email.includes('@')) {
-      setErrorMsg('Mohon masukkan alamat email yang valid.');
+    // [MODIFIED] Validasi dilonggarkan. Tidak wajib '@' karena bisa jadi Username.
+    if (email.trim().length < 3) {
+      setErrorMsg('Mohon masukkan Email atau Username yang valid.');
       return;
     }
+    
     if (password.length < 1) {
       setErrorMsg('Mohon masukkan password.');
       return;
@@ -81,6 +85,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      // API Payload tetap { email, password }
+      // Backend akan mendeteksi apakah isinya email atau username
       const result = await loginUser({ email, password });
       
       // 1. Ambil token awal dari respon login
@@ -129,7 +135,7 @@ export default function LoginPage() {
       router.push(redirectUrl);
       router.refresh();
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Gagal login, periksa email atau password.';
+      const message = error.response?.data?.message || 'Gagal login, periksa email/username atau password.';
       setErrorMsg(message);
       setIsLoading(false);
     }
@@ -174,14 +180,16 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email Input */}
+            {/* Email / Username Input */}
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-gray-700 text-xs font-bold uppercase tracking-wider">Email Address</label>
+              <label htmlFor="email" className="block text-gray-700 text-xs font-bold uppercase tracking-wider">
+                Email / Username
+              </label>
               <input
                 id="email"
-                type="email"
+                type="text" // [MODIFIED] Ganti dari 'email' ke 'text'
                 className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
-                placeholder="nama@email.com"
+                placeholder="Email atau Username" // [MODIFIED] Placeholder diperjelas
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}

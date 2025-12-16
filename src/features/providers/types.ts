@@ -32,6 +32,7 @@ export interface ProviderServiceItem {
 export interface ProviderUser {
   _id: string;
   fullName: string;
+  username?: string; // [BARU] Field username ditambahkan di sini
   profilePictureUrl: string;
   bio: string;
   phoneNumber?: string;
@@ -73,7 +74,7 @@ export interface Provider {
 
   // Statistik
   totalCompletedOrders?: number;
-  totalFavorites?: number; // [BARU] Field ditambahkan
+  totalFavorites?: number; 
 
   // Jadwal Operasional
   schedule?: ScheduleItem[];

@@ -322,9 +322,14 @@ function SearchContent() {
                         return 'Lokasi Mitra';
                     };
 
+                    // [PERBAIKAN UTAMA] Link ke Profil Baru
+                    const profileLink = prov.userId?.username 
+                        ? `/u/${prov.userId.username}` 
+                        : `/u/${prov._id}`;
+
                     return (
                         <Link
-                            href={`/provider/${prov._id}`}
+                            href={profileLink}
                             key={prov._id}
                             className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col w-full group hover:shadow-md hover:border-red-100 transition-all duration-300 h-full"
                         >

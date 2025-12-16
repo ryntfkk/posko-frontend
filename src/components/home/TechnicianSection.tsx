@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { fetchProviders, FetchProvidersParams } from '@/features/providers/api';
 import { Provider } from '@/features/providers/types';
-import { useLanguage } from '@/context/LanguageContext'; // [BARU]
+import { useLanguage } from '@/context/LanguageContext'; 
 
 interface TechnicianSectionProps {
   userLocation?: {
@@ -42,7 +42,7 @@ const formatCompactPrice = (price: number) => {
 };
 
 export default function TechnicianSection({ userLocation }: TechnicianSectionProps) {
-  const { t } = useLanguage(); // [BARU]
+  const { t } = useLanguage(); 
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -76,7 +76,6 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3 px-4 lg:px-8">
             <div>
-              {/* [UPDATE] t() */}
               <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
             </div>
           </div>
@@ -162,9 +161,15 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                 return 'Lokasi Mitra';
              };
 
+             // [PERBAIKAN UTAMA] Logic Link ke Profil
+             // Menggunakan username jika ada, jika tidak fallback ke ID
+             const profileLink = prov.userId?.username 
+                ? `/u/${prov.userId.username}` 
+                : `/u/${prov._id}`;
+
              return (
               <Link
-                href={`/provider/${prov._id}`}
+                href={profileLink}
                 key={prov._id}
                 className="snap-start bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden shrink-0 flex flex-col w-32 lg:w-48 group hover:shadow-md hover:border-red-100 transition-all duration-300"
               >
@@ -220,7 +225,6 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
 
                   <div className="mt-auto pt-2 flex items-center justify-between">
                     <div className="flex flex-col">
-                        {/* [UPDATE] t() */}
                         <span className="text-[8px] text-gray-400 leading-none mb-0.5">{t('common.start')}</span>
                         <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
                             {minPrice > 0 ? formatCompactPrice(minPrice) : t('common.contact')}
