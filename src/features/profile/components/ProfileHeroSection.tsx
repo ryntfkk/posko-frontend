@@ -157,7 +157,7 @@ export default function ProfileHeroSection({
             
             {/* Location & Username */}
             <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                <span className="text-gray-900 font-medium">@{user.username}</span>
+                <span className="text-gray-900 font-medium">@{user.username}</span> 
                 <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
                 {/* [UPDATE] Menampilkan displayLocation yang sudah dikalkulasi dengan benar */}
                 <span className="font-medium text-gray-700">{displayLocation}</span>
