@@ -12,6 +12,9 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // [NEW] State untuk feedback copy link
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -34,18 +37,37 @@ export default function ProfilePage() {
   };
 
   const handleRegisterProvider = () => {
-    // Aksi untuk user yang belum jadi mitra -> Redirect ke Website Mitra
     window.location.href = 'https://provider.poskojasa.com/';
   };
 
   const handleSwitchToProvider = () => {
-    // Aksi untuk user yang SUDAH jadi mitra -> Redirect ke Dashboard Mitra
     window.location.href = 'https://provider.poskojasa.com/';
+  };
+
+  // [NEW] Fitur Copy Link Profil
+  const handleShareProfile = () => {
+    if (!user?.username) {
+        // Jika belum ada username, arahkan ke edit profil
+        router.push('/profile/edit');
+        return;
+    }
+
+    const shareUrl = `${window.location.origin}/provider/${user.username}`;
+    
+    // Gunakan Clipboard API
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            setCopySuccess(true);
+            setTimeout(() => setCopySuccess(false), 2000); // Reset setelah 2 detik
+        });
+    } else {
+        // Fallback manual (jarang terjadi di browser modern)
+        alert(`Link profil Anda: ${shareUrl}`);
+    }
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Memuat...</div>;
 
-  // Helper untuk mengecek apakah user adalah provider
   const isProvider = user?.roles?.includes('provider');
 
   return (
@@ -71,8 +93,13 @@ export default function ProfilePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">{user?.fullName}</h1>
-            <p className="text-gray-500">{user?.phoneNumber || user?.email}</p>
-            {/* Label Role User */}
+            {/* [NEW] Tampilkan Username jika ada */}
+            {user?.username ? (
+                <p className="text-sm text-gray-500 font-medium">@{user.username}</p>
+            ) : (
+                <p className="text-gray-500 text-sm">{user?.phoneNumber || user?.email}</p>
+            )}
+            
             <div className="flex gap-2 mt-1">
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                     Customer
@@ -85,6 +112,26 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* [NEW] Tombol Share Profile (Hanya muncul jika sudah jadi Provider) */}
+        {isProvider && (
+            <button 
+                onClick={handleShareProfile}
+                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-100 transition-all active:scale-[0.98]"
+            >
+                {copySuccess ? (
+                    <>
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                        <span className="text-green-600">Link Tersalin!</span>
+                    </>
+                ) : (
+                    <>
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                        <span>{user?.username ? 'Bagikan Profil Saya' : 'Buat Username untuk Bagikan'}</span>
+                    </>
+                )}
+            </button>
+        )}
       </div>
 
       {/* Menu List Container */}
@@ -94,7 +141,6 @@ export default function ProfilePage() {
         <div>
             <h3 className="text-sm font-semibold text-gray-500 mb-3 px-1 uppercase tracking-wider">Aktivitas Saya</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Voucher Saya */}
                 <Link href="/profile/vouchers" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-purple-50 text-purple-600">
@@ -115,7 +161,6 @@ export default function ProfilePage() {
         <div>
             <h3 className="text-sm font-semibold text-gray-500 mb-3 px-1 uppercase tracking-wider">Akun Saya</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Edit Profil */}
                 <Link href="/profile/edit" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-600">
@@ -128,7 +173,6 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                 </Link>
 
-                {/* [BARU] Alamat Tersimpan */}
                 <Link href="/profile/address" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-50 text-orange-600">
@@ -144,7 +188,6 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                 </Link>
 
-                {/* [BARU] Keamanan Akun */}
                 <Link href="/profile/security" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 text-gray-600">
@@ -166,7 +209,6 @@ export default function ProfilePage() {
             <h3 className="text-sm font-semibold text-gray-500 mb-3 px-1 uppercase tracking-wider">Area Mitra</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {isProvider ? (
-                    // TAMPILAN JIKA SUDAH JADI MITRA
                     <button onClick={handleSwitchToProvider} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-50 text-green-600">
@@ -184,7 +226,6 @@ export default function ProfilePage() {
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                     </button>
                 ) : (
-                    // TAMPILAN JIKA BELUM JADI MITRA
                     <button onClick={handleRegisterProvider} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-teal-50 text-teal-600">
@@ -209,7 +250,6 @@ export default function ProfilePage() {
         <div className="pb-8">
             <h3 className="text-sm font-semibold text-gray-500 mb-3 px-1 uppercase tracking-wider">Lainnya</h3>
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4">
-                {/* Pusat Bantuan */}
                 <Link href="/help" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-50 text-indigo-600">
@@ -224,7 +264,6 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
                 </Link>
 
-                {/* Syarat & Ketentuan */}
                 <Link href="/terms" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors last:border-0">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 text-gray-600">
@@ -240,7 +279,6 @@ export default function ProfilePage() {
                 </Link>
             </div>
 
-            {/* Logout Button */}
             <button 
                 onClick={handleLogout}
                 className="w-full bg-white p-4 rounded-xl shadow-sm text-red-600 font-medium border border-gray-100 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"

@@ -1,3 +1,4 @@
+// src/app/profile/edit/page.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -6,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { fetchProfile, updateProfile } from '@/features/auth/api';
 import { uploadApi } from '@/features/upload/api';
+import { settingsApi } from '@/features/settings/api'; // [NEW] Import Settings API
 import { User } from '@/features/auth/types';
 
 export default function EditProfilePage() {
@@ -22,10 +24,14 @@ export default function EditProfilePage() {
   // State Form
   const [formData, setFormData] = useState({
     fullName: '',
+    username: '', // [NEW] State Username
     phoneNumber: '',
     birthDate: '',
     gender: '',
   });
+
+  // Untuk mengecek apakah username berubah (agar tidak call API jika tidak perlu)
+  const [initialUsername, setInitialUsername] = useState('');
 
   // State Gambar
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -43,7 +49,7 @@ export default function EditProfilePage() {
         const profile = res.data.profile;
         setUser(profile);
 
-        // Logic Sanitasi Nomor HP untuk Tampilan (Hapus prefix 62/0/+62 karena sudah ada di UI)
+        // Logic Sanitasi Nomor HP
         let displayPhone = profile.phoneNumber || '';
         if (displayPhone.startsWith('+62')) {
           displayPhone = displayPhone.slice(3);
@@ -54,15 +60,17 @@ export default function EditProfilePage() {
         }
 
         // Pre-fill form
+        const currentUsername = profile.username || '';
         setFormData({
           fullName: profile.fullName || '',
+          username: currentUsername,
           phoneNumber: displayPhone,
-          // Handle tanggal agar sesuai format input type="date" (YYYY-MM-DD)
           birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
           gender: (profile as any).gender || '',
         });
+        setInitialUsername(currentUsername);
 
-        // Set preview image awal dari profile URL
+        // Set preview image
         setPreviewImage(profile.profilePictureUrl || null);
       } catch (error) {
         console.error('Gagal memuat profil:', error);
@@ -82,11 +90,19 @@ export default function EditProfilePage() {
   // 2. Handle Perubahan Input Text
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrorMessage(null); // Clear error saat user mengetik
+    
+    // [NEW] Validasi Real-time Username (Hapus spasi & simbol aneh saat mengetik)
+    if (name === 'username') {
+        const sanitized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        setFormData((prev) => ({ ...prev, [name]: sanitized }));
+    } else {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+    
+    setErrorMessage(null); 
   };
 
-  // 3. Handle Pilih Gambar dengan Validasi
+  // 3. Handle Pilih Gambar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     setErrorMessage(null);
@@ -94,26 +110,23 @@ export default function EditProfilePage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
 
-      // Validasi Tipe File
       if (!file.type.startsWith('image/')) {
         setFileError('Hanya file gambar yang diperbolehkan (JPG, PNG)');
         return;
       }
 
-      // Validasi Ukuran (Max 5MB sesuai standar S3/Backend)
       if (file.size > 5 * 1024 * 1024) {
         setFileError('Ukuran file terlalu besar. Maksimal 5MB');
         return;
       }
 
       setSelectedFile(file);
-      setPreviewImage(URL.createObjectURL(file)); // Preview lokal instan
+      setPreviewImage(URL.createObjectURL(file)); 
     }
   };
 
   // 4. Validasi Form Data
   const validateForm = (): boolean => {
-    // Validasi Nama Lengkap
     if (!formData.fullName || formData.fullName.trim().length === 0) {
       setErrorMessage('Nama lengkap tidak boleh kosong');
       return false;
@@ -124,21 +137,32 @@ export default function EditProfilePage() {
       return false;
     }
 
-    // Validasi Nomor HP (Hanya cek panjang karena prefix diurus UI)
+    // [NEW] Validasi Username
+    if (!formData.username || formData.username.length < 3) {
+        setErrorMessage('Username minimal 3 karakter');
+        return false;
+    }
+    if (formData.username.length > 30) {
+        setErrorMessage('Username maksimal 30 karakter');
+        return false;
+    }
+    // Regex: Huruf, Angka, Underscore
+    if (!/^[a-z0-9_]+$/.test(formData.username)) {
+        setErrorMessage('Username hanya boleh huruf, angka, dan underscore (_)');
+        return false;
+    }
+
     if (formData.phoneNumber && formData.phoneNumber.trim().length > 0) {
-       // Cek apakah user mengetik huruf
        if (!/^\d+$/.test(formData.phoneNumber)) {
           setErrorMessage('Nomor HP hanya boleh berisi angka');
           return false;
        }
-       // Cek panjang minimal (misal 9 digit setelah kode negara)
        if (formData.phoneNumber.length < 9) {
           setErrorMessage('Nomor HP terlalu pendek');
           return false;
        }
     }
 
-    // Validasi Tanggal Lahir (Minimal 13 tahun)
     if (formData.birthDate) {
       const birthDate = new Date(formData.birthDate);
       const today = new Date();
@@ -162,13 +186,12 @@ export default function EditProfilePage() {
     return true;
   };
 
-  // 5. Submit Data (Logic Utama)
+  // 5. Submit Data
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Validasi form lokal
     if (!validateForm()) {
       window.scrollTo(0, 0);
       return;
@@ -179,7 +202,7 @@ export default function EditProfilePage() {
     try {
       let uploadedImageUrl = user?.profilePictureUrl;
 
-      // STEP 1: Upload Image ke S3 (Jika ada file baru)
+      // STEP 1: Upload Image (Jika ada)
       if (selectedFile) {
         try {
           uploadedImageUrl = await uploadApi.uploadImage(selectedFile);
@@ -188,37 +211,48 @@ export default function EditProfilePage() {
           setErrorMessage(`Gagal upload foto: ${uploadErr.message}`);
           setIsSaving(false);
           window.scrollTo(0, 0);
-          return; // Stop proses jika upload gagal
+          return; 
         }
       }
 
-      // STEP 2: Update Profile Data ke Backend
-      // Kita kirim raw input, backend mungkin tidak melakukan formatting '62' di updateProfile
-      // tapi UI meminta disamakan dengan Register. 
-      // Untuk keamanan data, kita kirim apa adanya atau bisa kita tambahkan '62' manual jika diperlukan.
-      // Di sini saya mengikuti pola Register yang mengirim input user.
+      // STEP 2: Update Username (Jika berubah)
+      if (formData.username !== initialUsername) {
+        try {
+            await settingsApi.updateUsername(formData.username);
+            setInitialUsername(formData.username); // Update initial state
+        } catch (usernameErr: any) {
+            console.error('Username Update Error:', usernameErr);
+            // Tangkap error khusus username (misal: duplikat)
+            const msg = usernameErr.response?.data?.message || 'Gagal mengupdate username';
+            setErrorMessage(msg);
+            setIsSaving(false);
+            window.scrollTo(0, 0);
+            return; // Stop flow jika username gagal
+        }
+      }
+
+      // STEP 3: Update Data Profil Lainnya
       const payload = {
         fullName: formData.fullName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
         birthDate: formData.birthDate,
         gender: formData.gender,
-        profilePictureUrl: uploadedImageUrl // Kirim URL baru atau yang lama
+        profilePictureUrl: uploadedImageUrl 
       };
 
       await updateProfile(payload);
 
       setSuccessMessage('Profil berhasil diperbarui!');
       
-      // Update state user lokal agar UI langsung berubah tanpa refresh
       setUser((prev: any) => ({
         ...prev,
-        ...payload
+        ...payload,
+        username: formData.username // Update state lokal
       }));
 
-      // Delay redirect sedikit agar user membaca pesan sukses
       setTimeout(() => {
         router.push('/profile');
-        router.refresh(); // Refresh server component data
+        router.refresh(); 
       }, 1500);
 
     } catch (error: any) {
@@ -254,7 +288,6 @@ export default function EditProfilePage() {
 
       <main className="max-w-lg mx-auto p-4 md:p-6">
         
-        {/* Error Alert */}
         {errorMessage && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2 animate-pulse">
             <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,7 +297,6 @@ export default function EditProfilePage() {
           </div>
         )}
 
-        {/* Success Alert */}
         {successMessage && (
           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-start gap-2">
             <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,7 +327,6 @@ export default function EditProfilePage() {
                   </div>
                 )}
                 
-                {/* Overlay Edit */}
                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </div>
@@ -306,12 +337,10 @@ export default function EditProfilePage() {
             </div>
             <p className="text-xs text-gray-500 font-medium">Ketuk untuk ubah foto</p>
             
-            {/* File Error */}
             {fileError && (
               <p className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded">{fileError}</p>
             )}
             
-            {/* Hidden Input File */}
             <input 
               type="file" 
               ref={fileInputRef}
@@ -339,9 +368,31 @@ export default function EditProfilePage() {
               />
             </div>
 
+            {/* Username Input [NEW] */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Username *</label>
+              <div className="relative">
+                <span className="absolute left-4 top-3.5 text-gray-400 text-sm font-medium">@</span>
+                <input 
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="bengkelbudi"
+                    minLength={3}
+                    maxLength={30}
+                    disabled={isSaving}
+                    className="w-full pl-8 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400">
+                Hanya huruf kecil, angka, dan underscore. Digunakan untuk link profil Anda.
+              </p>
+            </div>
+
             {/* Email (Read Only) */}
             <div className="space-y-1.5 opacity-60">
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Email (Tidak dapat diubah)</label>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Email</label>
               <input 
                 type="email"
                 value={user?.email || ''}
@@ -353,7 +404,6 @@ export default function EditProfilePage() {
             {/* Nomor HP */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nomor WhatsApp</label>
-              {/* UI Diperbarui Menyesuaikan Halaman Register */}
               <div className="flex gap-3">
                   <span className="flex items-center justify-center bg-gray-100 border border-gray-200 rounded-xl px-3 text-sm font-bold text-gray-600">+62</span>
                   <input 
