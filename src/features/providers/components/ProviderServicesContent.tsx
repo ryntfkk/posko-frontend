@@ -52,7 +52,7 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
                  <img 
                     src={service.iconUrl || '/file.svg'} 
                     alt={service.name} 
-                    className="w-5 h-5 lg:w-6 lg:h-6 object-contain opacity-80 group-hover:scale-110 transition-transform" 
+                    className="w-10 h-10 lg:w-6 lg:h-6 object-contain opacity-80 group-hover:scale-110 transition-transform" 
                  />
                </div>
             </div>
@@ -76,6 +76,11 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
               {/* Deskripsi Singkat */}
               <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed max-w-[90%]">
                  {service.shortDescription || 'Layanan profesional dengan jaminan kualitas.'}
+              </p>
+
+              {/* [UPDATE] Call to Action Text */}
+              <p className="text-[10px] font-medium text-blue-600 mt-1">
+                 Lihat detail lengkap &gt;
               </p>
 
               {/* Meta Info Row: Duration, Unit, Promo */}

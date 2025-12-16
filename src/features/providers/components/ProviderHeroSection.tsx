@@ -1,8 +1,10 @@
 // src/features/providers/components/ProviderHeroSection.tsx
 
 import Image from 'next/image';
+import { useState } from 'react'; // [UPDATE] Import useState
 import { Provider } from '../types';
 import { HeartIcon, CalendarIcon, ChatIcon } from './Icons';
+import ProviderReviewsListModal from './ProviderReviewsListModal'; // [UPDATE] Import Modal
 
 interface ProviderHeroSectionProps {
   provider: Provider;
@@ -25,9 +27,11 @@ export default function ProviderHeroSection({
   onChat,
   onViewProfile,
 }: ProviderHeroSectionProps) {
+  const [isReviewsOpen, setIsReviewsOpen] = useState(false); // [UPDATE] State Modal
+
   const totalOrders = provider.totalCompletedOrders ?? 0;
   const rating = provider.rating ?? 0;
-  // const totalFavorites = (provider as any).totalFavorites ?? 0;
+  const totalFavorites = provider.totalFavorites ?? 0;
 
   // Definisikan URL gambar
   const profileImageUrl = provider.userId?.profilePictureUrl ||
@@ -83,12 +87,23 @@ export default function ProviderHeroSection({
                 <span className="font-medium text-gray-700">{distance}</span>
               </p>
 
-              {/* Stats Inline: Rating & Orders */}
-              <div className="flex items-center gap-3 mt-2 text-xs">
-                 <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
+              {/* Stats Inline: Rating, Orders, & Favorites */}
+              <div className="flex items-center gap-2 mt-2 text-xs">
+                 {/* Rating & Orders [UPDATE: Jadi Button] */}
+                 <button 
+                    onClick={() => setIsReviewsOpen(true)}
+                    className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md hover:bg-gray-100 transition-colors cursor-pointer active:scale-95"
+                 >
                     <span className="text-yellow-500">★</span>
                     <span className="font-bold text-gray-900">{rating.toFixed(1)}</span>
                     <span className="text-gray-400 font-normal">({totalOrders} pesanan)</span>
+                    <span className="text-gray-300 ml-1">›</span>
+                 </button>
+
+                 {/* Total Favorites Badge */}
+                 <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-md">
+                    <HeartIcon solid={true} className="w-3 h-3 text-red-500" />
+                    <span className="font-bold text-gray-900">{totalFavorites}</span>
                  </div>
               </div>
 
@@ -132,6 +147,14 @@ export default function ProviderHeroSection({
         </div>
 
       </div>
+
+      {/* [UPDATE] Pasang Modal Disini */}
+      <ProviderReviewsListModal 
+        isOpen={isReviewsOpen}
+        onClose={() => setIsReviewsOpen(false)}
+        providerId={provider._id}
+      />
+
     </section>
   );
 }

@@ -73,6 +73,7 @@ export interface Provider {
 
   // Statistik
   totalCompletedOrders?: number;
+  totalFavorites?: number; // [BARU] Field ditambahkan
 
   // Jadwal Operasional
   schedule?: ScheduleItem[];
