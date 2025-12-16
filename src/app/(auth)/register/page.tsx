@@ -88,6 +88,7 @@ export default function RegisterPage() {
     password: '', 
     confirmPassword: '',
     fullName: '', 
+    username: '', // [NEW] Added username field
     phoneNumber: '', 
     birthDate: '2000-01-01', 
     gender: '',
@@ -467,6 +468,17 @@ export default function RegisterPage() {
         return 'Nama lengkap minimal 3 karakter.';
       }
       
+      // [NEW] Username Validation
+      if (!formData.username) {
+        return 'Username wajib diisi.';
+      }
+      if (formData.username.trim().length < 3) {
+        return 'Username minimal 3 karakter.';
+      }
+      if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+         return 'Username hanya boleh huruf, angka, dan underscore.';
+      }
+
       if (!formData.birthDate) {
         return 'Tanggal lahir wajib diisi.';
       }
@@ -536,6 +548,7 @@ export default function RegisterPage() {
     try {
       const payload: RegisterPayload = {
         fullName: formData.fullName.trim(),
+        username: formData.username.trim(), // [NEW] Send Username
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
         phoneNumber: formData.phoneNumber,
@@ -988,6 +1001,23 @@ export default function RegisterPage() {
                         placeholder="Nama sesuai KTP"
                         autoComplete="name"
                       />
+                    </div>
+
+                    {/* Username [NEW] */}
+                    <div className="flex flex-col gap-2">
+                      <label className="label-text">Username</label>
+                      <input 
+                        type="text" 
+                        name="username" 
+                        value={formData.username} 
+                        onChange={handleChange} 
+                        className="input-field" 
+                        placeholder="username_anda"
+                        autoComplete="username"
+                      />
+                      <p className="text-[10px] text-gray-400">
+                        Hanya huruf, angka, dan underscore.
+                      </p>
                     </div>
 
                     {/* Grid untuk Tanggal Lahir & Gender */}

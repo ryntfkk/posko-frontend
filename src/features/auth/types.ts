@@ -2,6 +2,7 @@
 export interface User {
   _id: string;
   fullName: string;
+  username: string; // [NEW] Added username
   email: string;
   roles: string[];
   activeRole: string;
@@ -34,6 +35,7 @@ export interface LoginPayload {
 
 export interface RegisterPayload {
   fullName: string;
+  username: string; // [NEW] Added username
   email: string;
   password?: string;
   phoneNumber: string;
