@@ -1,6 +1,8 @@
 // src/features/providers/types.ts
 
-export type ServiceUnit = 'unit' | 'jam' | 'meter' | 'kg' | 'paket' | 'orang' | 'kendaraan' | 'sesi';
+// [UPDATE] Menyinkronkan ServiceUnit dengan definisi master di services/types.ts
+// Menambahkan 'hari' dan 'ruangan' yang sebelumnya hilang agar type safety terjamin
+export type ServiceUnit = 'unit' | 'jam' | 'hari' | 'meter' | 'kg' | 'paket' | 'orang' | 'ruangan' | 'kendaraan' | 'sesi';
 
 export interface ProviderServiceDetail {
   _id: string;
