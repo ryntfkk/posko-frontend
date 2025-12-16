@@ -23,7 +23,10 @@ export default function BottomNav() {
   // 2. Cek halaman profil mitra/provider
   const isProviderPage = pathname.startsWith('/provider/');
 
-  // 3. List halaman statis yang harus disembunyikan
+  // 3. [BARU] Cek halaman public profile user (page u)
+  const isPublicUserPage = pathname.startsWith('/u/');
+
+  // 4. List halaman statis yang harus disembunyikan
   const hiddenStaticPaths = ['/login', '/register', '/checkout', '/order/summary'];
 
   // GABUNGKAN SEMUA KONDISI:
@@ -31,7 +34,8 @@ export default function BottomNav() {
   if (
     hiddenStaticPaths.includes(pathname) || 
     isOrderDetailPage || 
-    isProviderPage
+    isProviderPage ||
+    isPublicUserPage // Tambahkan kondisi ini
   ) {
     return null;
   }
