@@ -10,7 +10,7 @@ import ProviderReviewsListModal from '@/features/providers/components/ProviderRe
 
 interface ProfileHeroSectionProps {
   user: User;
-  provider: Provider | null; // Provider bisa null
+  provider: Provider | null;
   distance: string;
   isFavorited: boolean;
   onToggleFavorite: () => void;
@@ -33,31 +33,23 @@ export default function ProfileHeroSection({
 }: ProfileHeroSectionProps) {
   const [isReviewsOpen, setIsReviewsOpen] = useState(false);
 
-  // Data Statistik (Hanya jika Provider ada)
+  // Data Statistik
   const isProvider = !!provider;
   const totalOrders = provider?.totalCompletedOrders ?? 0;
   const rating = provider?.rating ?? 0;
   const totalFavorites = provider?.totalFavorites ?? 0;
 
-  // Definisikan URL gambar (Ambil dari User, karena Provider tidak punya field foto profil terpisah)
+  // Definisikan URL gambar
   const profileImageUrl = user.profilePictureUrl ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username || user.fullName || 'default'}`;
 
-  // Cek Status Verifikasi
-  const isVerified = provider?.verificationStatus === 'verified';
-
-  // [PERBAIKAN UTAMA] Logika Penentuan Alamat
-  // Jika ini adalah profil MITRA (provider ada), kita WAJIB menampilkan alamat Mitra (provider.location).
-  // Jangan gunakan user.address (alamat rumah) agar tidak terjadi kesalahan seperti "Surabaya" vs "Semarang".
-  
+  // Logika Penentuan Alamat
   let displayLocation = 'Lokasi belum diatur';
 
   if (isProvider && provider) {
-      // Ambil dari object location provider
       const addressData = provider.location?.address;
       
       if (addressData) {
-          // Prioritas: Kota -> Kecamatan -> Provinsi -> Full Address
           displayLocation = addressData.city || 
                             addressData.district || 
                             addressData.province || 
@@ -66,15 +58,15 @@ export default function ProfileHeroSection({
           displayLocation = 'Lokasi Mitra belum diatur';
       }
   } else {
-      // Jika USER BIASA (Bukan Mitra), barulah gunakan alamat dari profil user
       displayLocation = user.address?.city || 'Kota tidak tersedia';
   }
 
   return (
     <section className="bg-white px-4 pt-6 pb-4 relative">
       
-      {/* --- HEADER SECTION --- */}
-      <div className="flex items-start gap-4 lg:gap-8 mb-4">
+      {/* --- HEADER SECTION (Foto & Stats) --- */}
+      {/* [UPDATED] mb-3 (12px) agar jarak ke info tidak terlalu jauh */}
+      <div className="flex items-start gap-4 lg:gap-8 mb-3">
         
         {/* 1. FOTO PROFIL */}
         <button 
@@ -91,13 +83,13 @@ export default function ProfileHeroSection({
                />
             </div>
           </div>
-          {/* Status Dot (Hanya jika provider & online) */}
+          {/* Status Dot */}
           {isProvider && provider?.isOnline && (
             <div className="absolute bottom-3 right-3 w-5 h-5 border-[3px] border-white bg-green-500 rounded-full"></div>
           )}
         </button>
 
-        {/* 2. STATS OR EMPTY SPACE */}
+        {/* 2. STATS */}
         <div className="flex-1 flex flex-col justify-center h-28 lg:h-40">
             {isProvider ? (
               <div className="flex justify-around items-center text-center">
@@ -129,7 +121,6 @@ export default function ProfileHeroSection({
                   </div>
               </div>
             ) : (
-              // Tampilan untuk User Biasa (Non-Mitra)
               <div className="flex flex-col justify-center h-full px-2">
                  <div className="text-sm text-gray-500 italic">
                     "Bergabung sejak {new Date(user.createdAt || Date.now()).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}"
@@ -140,39 +131,38 @@ export default function ProfileHeroSection({
       </div>
 
       {/* --- BIO & INFO SECTION --- */}
-      <div className="flex flex-col gap-2 mb-6 px-1">
+      {/* [UPDATED] Menggunakan gap-3 (12px) untuk jarak antar blok (Identity Block vs Bio) */}
+      <div className="flex flex-col gap-3 mb-6">
           
-          {/* Nama & Verified Badge */}
-          <div className="flex flex-col">
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-1.5">
-                {user.fullName}
-                {isVerified && (
-                  <span className="text-blue-500" title="Mitra Terverifikasi">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                      <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.491 4.491 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.06-1.06L10 13.69l-1.72-1.72a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.06 0l4.25-4.25z" clipRule="evenodd" />
-                    </svg>
-                  </span>
-                )}
-            </h1>
+          {/* Blok Identitas: Username & Lokasi */}
+          {/* [UPDATED] gap-1 (4px) agar username dan lokasi rapat */}
+          <div className="flex flex-col gap-1">
             
-            {/* Location & Username */}
-            <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                <span className="text-gray-900 font-medium">@{user.username}</span> 
-                <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                {/* [UPDATE] Menampilkan displayLocation yang sudah dikalkulasi dengan benar */}
-                <span className="font-medium text-gray-700">{displayLocation}</span>
+            {/* Username */}
+            <p className="text-base text-gray-900 font-bold">@{user.username}</p>
+
+            {/* Location & Distance */}
+            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-400 shrink-0">
+                  <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+                
+                <span className="font-medium">{displayLocation}</span>
                 
                 {isProvider && (
                   <>
-                    <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                    <span>{distance}</span>
+                    <span className="text-gray-300">•</span>
+                    <span className={`${distance.includes('Login') ? 'text-blue-600 italic' : ''}`}>
+                        {distance}
+                    </span>
                   </>
                 )}
-            </p>
+            </div>
           </div>
 
           {/* Bio Text */}
-          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line mt-1">
+          {/* [UPDATED] Tidak ada margin top manual, mengikuti gap parent (gap-3) */}
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
              {user.bio || (isProvider ? 'Mitra profesional siap membantu kebutuhan Anda.' : 'Pengguna Posko.')}
           </p>
       </div>
@@ -181,7 +171,6 @@ export default function ProfileHeroSection({
       <div className="flex gap-2">
          {isProvider ? (
            <>
-              {/* Tombol Chat (Mitra) */}
               <button
                 onClick={onChat}
                 className="flex-1 bg-gray-900 text-white font-semibold py-2.5 px-4 rounded-lg text-sm hover:bg-gray-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm"
@@ -190,7 +179,6 @@ export default function ProfileHeroSection({
                 Chat Mitra
               </button>
 
-              {/* Tombol Jadwal (Mitra) */}
               <button
                 onClick={onOpenCalendar}
                 className="flex-1 bg-white border border-gray-300 text-gray-700 font-semibold py-2.5 px-4 rounded-lg text-sm hover:bg-gray-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
@@ -199,7 +187,6 @@ export default function ProfileHeroSection({
                 Cek Jadwal
               </button>
 
-              {/* Tombol Favorite */}
               <button
                 onClick={onToggleFavorite}
                 className={`w-11 h-11 flex items-center justify-center rounded-lg border transition-all shrink-0 ${
@@ -213,7 +200,6 @@ export default function ProfileHeroSection({
            </>
          ) : (
            <>
-             {/* Tombol Share untuk User Biasa */}
              <button
                 onClick={onShare}
                 className="flex-1 bg-gray-100 text-gray-800 font-semibold py-2.5 px-4 rounded-lg text-sm hover:bg-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
@@ -227,7 +213,6 @@ export default function ProfileHeroSection({
          )}
       </div>
 
-      {/* Modal Review (Hanya jika provider) */}
       {isProvider && provider && (
         <ProviderReviewsListModal 
             isOpen={isReviewsOpen}
