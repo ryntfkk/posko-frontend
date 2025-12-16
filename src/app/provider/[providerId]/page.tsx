@@ -30,7 +30,8 @@ import {
 export default function ProviderProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const providerId = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
+  // Bisa berupa ID (lama) atau Username (baru)
+  const identifier = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
 
   // Data State
   const [provider, setProvider] = useState<Provider | null>(null);
@@ -58,13 +59,15 @@ export default function ProviderProfilePage() {
 
   // Load Data
   useEffect(() => {
-    if (! providerId) return;
+    if (!identifier) return;
     
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const providerRes = await fetchProviderById(providerId);
-        setProvider(providerRes.data);
+        // Fetch Provider (Backend sudah support ID atau Username)
+        const providerRes = await fetchProviderById(identifier);
+        const providerData = providerRes.data;
+        setProvider(providerData);
 
         const token = localStorage.getItem('posko_token');
         if (token) {
@@ -73,11 +76,14 @@ export default function ProviderProfilePage() {
           setCurrentUser(userRes.data.profile);
 
           // 2. Check Initial Favorite Status
-          try {
-             const favRes = await checkFavoriteStatus(providerId);
-             setIsFavorited(favRes.data.isFavorited);
-          } catch (err) {
-             console.error('Gagal cek status favorit:', err);
+          // [FIX] Gunakan providerData._id (ID asli), bukan identifier (yang mungkin username)
+          if (providerData?._id) {
+            try {
+               const favRes = await checkFavoriteStatus(providerData._id);
+               setIsFavorited(favRes.data.isFavorited);
+            } catch (err) {
+               console.error('Gagal cek status favorit:', err);
+            }
           }
         } else {
           setDistance('Login untuk Jarak');
@@ -90,7 +96,7 @@ export default function ProviderProfilePage() {
     };
     
     loadData();
-  }, [providerId]);
+  }, [identifier]);
 
   // Calculate Distance
   useEffect(() => {
@@ -105,19 +111,27 @@ export default function ProviderProfilePage() {
   // Handlers
   const handleShare = async () => {
     setIsSharing(true);
+    
+    // [FIX] Gunakan Username untuk link share jika ada, fallback ke URL saat ini
+    // Pastikan tipe User di Provider sudah update di types.ts (tambahkan username?: string)
+    const username = (provider?.userId as any)?.username;
+    const shareUrl = username 
+      ? `${window.location.origin}/provider/${username}`
+      : window.location.href;
+
     if (navigator.share && provider) {
       try {
         await navigator.share({
           title: `Jasa ${provider.userId?.fullName || 'Mitra'}`,
           text: 'Cek jasa profesional ini di Posko! ',
-          url: window.location.href,
+          url: shareUrl,
         });
       } catch (err) {
         /* Ignore share cancel */
       }
     } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link tersalin! ');
+      navigator.clipboard.writeText(shareUrl);
+      alert('Link profil tersalin!');
     }
     setTimeout(() => setIsSharing(false), 500);
   };
@@ -144,7 +158,7 @@ export default function ProviderProfilePage() {
     } as Provider);
 
     try {
-        // 2. Call API
+        // 2. Call API (Gunakan ID asli provider)
         await toggleFavorite(provider._id);
     } catch (error) {
         console.error('Gagal update favorit:', error);
@@ -219,7 +233,7 @@ export default function ProviderProfilePage() {
   }
 
   // Render Not Found
-  if (! provider) {
+  if (!provider) {
     return <ProviderNotFound />;
   }
 
@@ -254,12 +268,10 @@ export default function ProviderProfilePage() {
       </header>
 
       {/* MAIN CONTENT WRAPPER */}
-      {/* Menggunakan max-w-6xl agar lebih lebar sedikit di desktop */}
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 items-start">
           
           {/* KOLOM UTAMA (KIRI) */}
-          {/* UPDATE: Ditambahkan lg:pr-12 agar Hero Section tidak menabrak Sidebar */}
           <div className="lg:col-span-8 w-full lg:pr-12">
             
             {/* 1. HERO SECTION */}
@@ -289,7 +301,6 @@ export default function ProviderProfilePage() {
           </div>
 
           {/* KOLOM KANAN (SIDEBAR DESKTOP) */}
-          {/* UPDATE: Padding kiri diperbesar (pl-10) agar konten tidak mepet garis batas */}
           <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-gray-100 lg:pl-10 lg:py-8">
              <ProviderSidebar />
           </div>
