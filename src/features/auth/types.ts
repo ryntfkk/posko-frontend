@@ -1,4 +1,9 @@
 // src/features/auth/types.ts
+
+// [NEW] Import Provider type untuk response public profile
+// Pastikan path ini benar sesuai struktur project Anda
+import { Provider } from '@/features/providers/types';
+
 export interface User {
   _id: string;
   fullName: string;
@@ -65,6 +70,16 @@ export interface ProfileResponse {
   message: string;
   data: {
     profile: User;
+  };
+}
+
+// [NEW] Tipe untuk Public Profile Response
+export interface PublicUserProfileResponse {
+  message: string;
+  data: {
+    user: User;
+    provider: Provider | null; // Provider bisa null jika user bukan mitra
+    isProvider: boolean;
   };
 }
 

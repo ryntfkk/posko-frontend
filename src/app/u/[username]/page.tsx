@@ -6,37 +6,46 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import api from '@/lib/axios';
-import { fetchProviderById, toggleFavorite, checkFavoriteStatus } from '@/features/providers/api';
-import { fetchProfile } from '@/features/auth/api';
+// [UPDATED] Menggunakan fetchPublicProfile untuk mengambil data User + Provider
+import { fetchPublicProfile, fetchProfile } from '@/features/auth/api';
+// [UPDATED] Import API provider hanya untuk fungsi spesifik mitra (Favorite)
+import { toggleFavorite, checkFavoriteStatus } from '@/features/providers/api';
+
 import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 
+// [UPDATED] Mengimpor komponen Profil baru yang User-Centric
+import {
+  ProfileHeroSection,
+  ProfileTabSection,
+  ProfileSidebar,
+  ProfileStickyBottomCTA
+} from '@/features/profile/components';
+
+// Menggunakan komponen shared dari folder providers (Modal, Icons, dll)
 import {
   calculateDistance,
   TabType,
   ServiceItem,
   BackIcon,
   ProviderLoading,
-  ProviderNotFound,
-  ProviderHeroSection,
-  ProviderTabSection,
-  ProviderSidebar,
+  ProviderNotFound, // Kita gunakan ini sebagai fallback jika User tidak ditemukan
   ProviderCalendarModal,
   ProviderServiceDetailModal,
   ProviderImageLightbox,
-  ProviderStickyBottomCTA,
 } from '@/features/providers/components';
 
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
   
-  // [MODIFIED] Kita ambil 'username' dari URL
   const identifier = Array.isArray(params.username) ? params.username[0] : params.username;
 
   // Data State
-  const [provider, setProvider] = useState<Provider | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [provider, setProvider] = useState<Provider | null>(null); // Provider bisa null
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [distance, setDistance] = useState('Menghitung...');
 
@@ -65,21 +74,24 @@ export default function PublicProfilePage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        // Backend otomatis mencari by Username karena formatnya bukan ID
-        const providerRes = await fetchProviderById(identifier);
-        const providerData = providerRes.data;
-        setProvider(providerData);
+        
+        // 1. Fetch Public Profile (User-Centric)
+        // Endpoint ini mengembalikan { user, provider, isProvider }
+        const response = await fetchPublicProfile(identifier);
+        
+        setUser(response.data.user);
+        setProvider(response.data.provider);
 
         const token = localStorage.getItem('posko_token');
         if (token) {
-          // 1. Load Profile
+          // 2. Load Current User Profile (untuk hitung jarak)
           const userRes = await fetchProfile();
           setCurrentUser(userRes.data.profile);
 
-          // 2. Check Initial Favorite Status
-          if (providerData?._id) {
+          // 3. Check Favorite Status (Hanya jika profil ini adalah MITRA)
+          if (response.data.provider?._id) {
             try {
-               const favRes = await checkFavoriteStatus(providerData._id);
+               const favRes = await checkFavoriteStatus(response.data.provider._id);
                setIsFavorited(favRes.data.isFavorited);
             } catch (err) {
                console.error('Gagal cek status favorit:', err);
@@ -89,7 +101,8 @@ export default function PublicProfilePage() {
           setDistance('Login untuk Jarak');
         }
       } catch (error) {
-        console.error('Gagal memuat data:', error);
+        console.error('Gagal memuat data profil:', error);
+        setUser(null); // Menandakan user tidak ditemukan
       } finally {
         setIsLoading(false);
       }
@@ -99,31 +112,32 @@ export default function PublicProfilePage() {
   }, [identifier]);
 
   // Calculate Distance
+  // Menggunakan lokasi User, bukan hanya Provider
   useEffect(() => {
-    if (provider && currentUser?.location?.coordinates && provider.userId?.location?.coordinates) {
+    if (user && user.location?.coordinates && currentUser?.location?.coordinates) {
       const [uLng, uLat] = currentUser.location.coordinates;
-      const [pLng, pLat] = provider.userId.location.coordinates;
+      const [targetLng, targetLat] = user.location.coordinates;
 
-      setDistance(uLat === 0 ? 'Set Alamat' : calculateDistance(uLat, uLng, pLat, pLng));
+      setDistance(uLat === 0 ? 'Set Alamat' : calculateDistance(uLat, uLng, targetLat, targetLng));
     }
-  }, [provider, currentUser]);
+  }, [user, currentUser]);
 
   // Handlers
   const handleShare = async () => {
     setIsSharing(true);
     
-    // [MODIFIED] Gunakan URL saat ini (yang sudah /u/username)
-    // atau generate eksplisit jika perlu
-    const username = (provider?.userId as any)?.username;
-    const shareUrl = username 
-      ? `${window.location.origin}/u/${username}`
+    // Gunakan username dari data user yang sudah di-fetch
+    const shareUrl = user?.username
+      ? `${window.location.origin}/u/${user.username}`
       : window.location.href;
 
-    if (navigator.share && provider) {
+    if (navigator.share) {
       try {
         await navigator.share({
-          title: `Jasa ${provider.userId?.fullName || 'Mitra'}`,
-          text: 'Cek jasa profesional ini di Posko! ',
+          title: `Profil ${user?.fullName || 'Pengguna Posko'}`,
+          text: provider 
+            ? 'Cek jasa profesional ini di Posko!' 
+            : 'Lihat profil pengguna ini di Posko!',
           url: shareUrl,
         });
       } catch (err) {
@@ -137,7 +151,8 @@ export default function PublicProfilePage() {
   };
 
   const handleToggleFavorite = async () => {
-    if (!provider || !provider.userId) return;
+    // Favorit hanya berlaku jika user ini adalah MITRA (punya provider data)
+    if (!provider) return;
     
     // 1. Optimistic Update
     const oldIsFavorited = isFavorited;
@@ -148,17 +163,16 @@ export default function PublicProfilePage() {
     setIsFavorited(newStatus);
     
     // Toggle counter
-    const currentFavs = (provider as any).totalFavorites || 0;
+    const currentFavs = provider.totalFavorites || 0;
     const newFavs = newStatus ? currentFavs + 1 : Math.max(0, currentFavs - 1);
     
     setProvider({
         ...provider,
-        // @ts-ignore
         totalFavorites: newFavs
-    } as Provider);
+    });
 
     try {
-        // 2. Call API (Gunakan ID asli provider)
+        // 2. Call API
         await toggleFavorite(provider._id);
     } catch (error) {
         console.error('Gagal update favorit:', error);
@@ -171,18 +185,19 @@ export default function PublicProfilePage() {
 
   const handleChat = async () => {
     if (!currentUser) {
-        alert('Silakan login terlebih dahulu untuk chat dengan mitra.');
+        alert('Silakan login terlebih dahulu untuk chat.');
         router.push('/login');
         return;
     }
 
-    if (!provider || !provider.userId) return;
+    if (!user) return;
 
     if (isChatLoading) return;
     setIsChatLoading(true);
 
     try {
-        await api.post('/chat', { targetUserId: provider.userId._id });
+        // Menggunakan user._id sebagai target
+        await api.post('/chat', { targetUserId: user._id });
         router.push('/chat');
     } catch (error: any) {
         console.error('Gagal memulai chat:', error);
@@ -232,8 +247,8 @@ export default function PublicProfilePage() {
     return <ProviderLoading />;
   }
 
-  // Render Not Found
-  if (!provider) {
+  // Render Not Found (Jika User null)
+  if (!user) {
     return <ProviderNotFound />;
   }
 
@@ -251,7 +266,7 @@ export default function PublicProfilePage() {
           </Link>
           
           <h1 className="text-sm font-bold text-gray-900 truncate max-w-[200px]">
-            {provider.userId?.fullName}
+            {user.fullName}
           </h1>
           
           <div className="flex gap-2">
@@ -274,12 +289,12 @@ export default function PublicProfilePage() {
           {/* KOLOM UTAMA (KIRI) */}
           <div className="lg:col-span-8 w-full lg:pr-12">
             
-            {/* 1. HERO SECTION */}
-            <ProviderHeroSection
+            {/* 1. HERO SECTION (UPDATED: Menggunakan ProfileHeroSection) */}
+            <ProfileHeroSection
+              user={user}
               provider={provider}
               distance={distance}
               isFavorited={isFavorited}
-              isSharing={isSharing}
               onToggleFavorite={handleToggleFavorite}
               onShare={handleShare}
               onOpenCalendar={handleOpenCalendar}
@@ -290,8 +305,9 @@ export default function PublicProfilePage() {
             {/* SEPARATOR HALUS (Mobile Only) */}
             <div className="h-px bg-gray-100 w-full lg:hidden"></div>
 
-            {/* 2. TAB & LIST SECTION */}
-            <ProviderTabSection
+            {/* 2. TAB & LIST SECTION (UPDATED: Menggunakan ProfileTabSection) */}
+            <ProfileTabSection
+              user={user}
               provider={provider}
               activeTab={activeTab}
               onTabChange={handleTabChange}
@@ -300,36 +316,40 @@ export default function PublicProfilePage() {
             />
           </div>
 
-          {/* KOLOM KANAN (SIDEBAR DESKTOP) */}
+          {/* KOLOM KANAN (SIDEBAR DESKTOP) (UPDATED: Menggunakan ProfileSidebar) */}
           <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-gray-100 lg:pl-10 lg:py-8">
-             <ProviderSidebar />
+             <ProfileSidebar user={user} provider={provider} />
           </div>
 
         </div>
       </div>
 
-      {/* MODALS */}
-      <ProviderCalendarModal
-        provider={provider}
-        isOpen={isCalendarOpen}
-        currentMonth={currentMonth}
-        onClose={handleCloseCalendar}
-        onChangeMonth={handleChangeMonth}
-      />
+      {/* MODALS (Hanya dirender jika data provider ada untuk fungsionalitas mitra) */}
+      {provider && (
+        <>
+            <ProviderCalendarModal
+                provider={provider}
+                isOpen={isCalendarOpen}
+                currentMonth={currentMonth}
+                onClose={handleCloseCalendar}
+                onChangeMonth={handleChangeMonth}
+            />
 
-      <ProviderServiceDetailModal
-        provider={provider}
-        selectedService={selectedService}
-        onClose={handleCloseServiceDetail}
-      />
+            <ProviderServiceDetailModal
+                provider={provider}
+                selectedService={selectedService}
+                onClose={handleCloseServiceDetail}
+            />
+        </>
+      )}
 
       <ProviderImageLightbox
         imageUrl={lightboxImage}
         onClose={handleCloseLightbox}
       />
 
-      {/* STICKY BOTTOM CTA */}
-      <ProviderStickyBottomCTA provider={provider} />
+      {/* STICKY BOTTOM CTA (UPDATED: Menggunakan ProfileStickyBottomCTA) */}
+      <ProfileStickyBottomCTA provider={provider} />
     </div>
   );
 }

@@ -8,7 +8,8 @@ import {
   PreRegisterResponse,
   VerifyPreOtpResponse,
   RequestPhoneOtpResponse, 
-  VerifyPhoneOtpResponse
+  VerifyPhoneOtpResponse,
+  PublicUserProfileResponse // [NEW] Import tipe baru
 } from './types';
 
 // [HELPER] Cookie Management
@@ -148,6 +149,13 @@ export const resendOtp = async (email: string) => {
 
 export const fetchProfile = async () => {
   const response = await api.get<ProfileResponse>('/auth/profile');
+  return response.data;
+};
+
+// [NEW] Fetch Public Profile (User-Centric)
+export const fetchPublicProfile = async (username: string) => {
+  // Menggunakan endpoint public baru yang dibuat di backend
+  const response = await api.get<PublicUserProfileResponse>(`/auth/public/${username}`);
   return response.data;
 };
 
