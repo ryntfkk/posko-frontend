@@ -87,8 +87,8 @@ export default function ChatWidget({ user }: { user: User }) {
     });
 
     newSocket.on('connect_error', (error) => {
-      // Hanya log sebagai warning agar tidak spam error merah di console
-      console.warn('⚠️ ChatWidget Socket connection failed:', error.message);
+      // Hanya log sebagai warning agar tidak spam error merah di console saat dev
+      console.warn('⚠️ ChatWidget Socket connection warning:', error.message);
     });
 
     newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
@@ -120,6 +120,8 @@ export default function ChatWidget({ user }: { user: User }) {
 
     return () => { 
       // console.log('🔌 Disconnecting ChatWidget socket...');
+      // Bersihkan semua listeners sebelum disconnect untuk mencegah memory leak
+      newSocket.removeAllListeners();
       newSocket.disconnect(); 
       socketRef.current = null;
     };

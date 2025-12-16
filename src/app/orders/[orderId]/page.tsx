@@ -6,13 +6,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query'; // [UPDATE] Migrasi ke React Query
+import { useQuery } from '@tanstack/react-query'; 
 
 import { fetchOrderById, updateOrderStatus, rejectAdditionalFee, cancelOrder, disputeOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api';
 import { createReview } from '@/features/reviews/api';
 import { Order, OrderStatus } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
+import { useSocket } from '@/context/SocketContext'; // [NEW] Import Socket Context
 import ReviewModal from '@/components/ReviewModal';
 import Receipt from '@/components/Receipt'; 
 import 'leaflet/dist/leaflet.css';
@@ -23,6 +24,7 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
+// Helper untuk recenter map jika driver bergerak jauh (opsional)
 const MapRecenter = dynamic(() => import('react-leaflet').then((mod) => {
     const { useMap } = mod;
     return function Recenter({ lat, lng }: { lat: number; lng: number }) {
@@ -52,7 +54,8 @@ const Icons = {
   Printer: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>,
   Help: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
   Zoom: () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>,
-  Alert: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+  Alert: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>,
+  Clip: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
 };
 
 // --- HELPERS ---
@@ -96,10 +99,8 @@ interface PageProps {
 
 export default function OrderDetailPage({ params }: PageProps) {
   const { orderId } = params;
+  const { socket } = useSocket(); // [NEW] Use Socket
   
-  // [UPDATE] Migrasi ke useQuery untuk Data Fetching & Realtime Updates
-  // Ini memperbaiki masalah data kosong karena data di-unpack dengan benar (res.data.data)
-  // Dan memungkinkan fitur SocketContext untuk me-refresh data secara otomatis.
   const { 
     data: orderData, 
     isLoading: isQueryLoading, 
@@ -109,7 +110,6 @@ export default function OrderDetailPage({ params }: PageProps) {
     queryKey: ['order', orderId],
     queryFn: async () => {
       const res = await fetchOrderById(orderId);
-      // [FIX CRITICAL] Ambil .data.data karena response API dibungkus { message, data }
       return res.data.data;
     },
     enabled: !!orderId,
@@ -136,15 +136,19 @@ export default function OrderDetailPage({ params }: PageProps) {
   // Modal State
   const [activeModal, setActiveModal] = useState<'cancel' | 'dispute' | null>(null);
   const [actionReason, setActionReason] = useState('');
+  const [disputeFiles, setDisputeFiles] = useState<File[]>([]); // [NEW] Dispute Files
 
-  // State untuk custom icon leaflet
+  // Map & Realtime Driver State
   const [redIcon, setRedIcon] = useState<any>(null);
+  const [driverIcon, setDriverIcon] = useState<any>(null); // [NEW] Driver Icon
+  const [driverLocation, setDriverLocation] = useState<[number, number] | null>(null); // [NEW] Realtime Location
 
+  // Init Leaflet Icons
   useEffect(() => {
     (async function initLeaflet() {
       const L = (await import('leaflet')).default;
       
-      const icon = L.icon({
+      const rIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
         iconSize: [20, 32], 
@@ -153,9 +157,38 @@ export default function OrderDetailPage({ params }: PageProps) {
         shadowSize: [32, 32]
       });
       
-      setRedIcon(icon);
+      const dIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41], 
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      
+      setRedIcon(rIcon);
+      setDriverIcon(dIcon);
     })();
   }, []);
+
+  // [NEW] Socket Listener for Driver Location
+  useEffect(() => {
+    if (!socket || !order) return;
+
+    // Listener untuk update lokasi driver
+    const handleLocationUpdate = (data: { orderId: string, lat: number, lng: number }) => {
+        if (data.orderId === order._id) {
+            console.log('[Realtime] Driver Location Updated:', data);
+            setDriverLocation([data.lat, data.lng]);
+        }
+    };
+
+    socket.on('driver_location_update', handleLocationUpdate);
+
+    return () => {
+        socket.off('driver_location_update', handleLocationUpdate);
+    };
+  }, [socket, order]);
 
   // Effect untuk menghitung mundur waktu pembayaran
   useEffect(() => {
@@ -193,7 +226,6 @@ export default function OrderDetailPage({ params }: PageProps) {
       if (window.snap) {
         window.snap.pay(res.data.snapToken, {
           onSuccess: () => {
-             // [UPDATE] Gunakan refetch query, bukan reload page
              refetch();
              alert('Pembayaran Berhasil! Mohon tunggu konfirmasi.');
           },
@@ -216,7 +248,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     setIsActionLoading(true);
     try {
       await rejectAdditionalFee(orderId, feeId);
-      refetch(); // [UPDATE] Refresh data without reload
+      refetch();
     } catch (e) {
       alert('Gagal menolak.');
     } finally {
@@ -229,7 +261,7 @@ export default function OrderDetailPage({ params }: PageProps) {
     setIsActionLoading(true);
     try {
       await updateOrderStatus(orderId, 'completed');
-      refetch(); // [UPDATE] Refresh data
+      refetch();
     } catch (e) {
       alert('Gagal konfirmasi.');
     } finally {
@@ -244,7 +276,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         await cancelOrder(orderId, actionReason);
         alert("Pesanan berhasil dibatalkan.");
         setActiveModal(null);
-        refetch(); // [UPDATE] Refresh data
+        refetch();
     } catch (error: any) {
         alert(error.response?.data?.message || "Gagal membatalkan pesanan.");
     } finally {
@@ -252,19 +284,33 @@ export default function OrderDetailPage({ params }: PageProps) {
     }
   };
 
+  // [UPDATED] Handle Dispute with File Upload
   const handleDisputeOrder = async () => {
     if (!actionReason.trim()) return alert("Mohon jelaskan masalah yang Anda alami.");
     setIsActionLoading(true);
     try {
-        await disputeOrder(orderId, actionReason);
+        // Panggil API dengan file
+        await disputeOrder(orderId, actionReason, disputeFiles);
         alert("Komplain berhasil diajukan. Admin akan segera memeriksa.");
         setActiveModal(null);
-        refetch(); // [UPDATE] Refresh data
+        setDisputeFiles([]); // Reset
+        refetch();
     } catch (error: any) {
         alert(error.response?.data?.message || "Gagal mengajukan komplain.");
     } finally {
         setIsActionLoading(false);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+        const files = Array.from(e.target.files);
+        setDisputeFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeDisputeFile = (index: number) => {
+    setDisputeFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmitReview = async (rating: number, comment: string) => {
@@ -284,7 +330,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         await createReview({
             userId: typeof order.userId === 'object' ? order.userId._id : order.userId,
             providerId: providerId,
-            orderId: order._id, // [FIX] Tambahkan orderId agar sesuai validasi backend
+            orderId: order._id, 
             rating,
             comment
         });
@@ -320,7 +366,6 @@ export default function OrderDetailPage({ params }: PageProps) {
     return map[status] || map.pending;
   };
 
-  // Logic Safety: Pastikan order ada
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
   
   if (queryError || !order) return (
@@ -345,7 +390,6 @@ export default function OrderDetailPage({ params }: PageProps) {
   const statusInfo = getStatusInfo(order.status);
   const providerData = typeof order.providerId === 'object' ? order.providerId : null;
 
-  // [SAFETY FIX] Defensive coding untuk kalkulasi
   const subtotal = (order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0);
   
   const totalAdditionalFees = order.additionalFees?.reduce((acc, fee) => {
@@ -363,12 +407,6 @@ export default function OrderDetailPage({ params }: PageProps) {
   const canCancel = ['pending', 'searching', 'paid'].includes(order.status);
 
   return (
-    /**
-     * NOTE FOR DEVELOPERS:
-     * We use 'bg-white' instead of gray/gradient.
-     * The BottomNav (in root layout) has z-index 99 and is approx 80px-100px high.
-     * We add 'pb-40' to this container to ensure the floating action bar doesn't cover content.
-     */
     <div className="min-h-screen bg-white pb-40 font-sans text-gray-900">
       
       {/* 1. COMPACT NAVBAR */}
@@ -507,7 +545,6 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
           
           <div className="p-3 space-y-3">
-            {/* [SAFETY] Gunakan optional chaining dan fallback array */}
             {(order.items || []).map((item, i) => (
               <div key={i} className="flex flex-col gap-1 text-xs">
                  <div className="flex justify-between items-start">
@@ -692,6 +729,12 @@ export default function OrderDetailPage({ params }: PageProps) {
                       <Popup>Lokasi Anda</Popup>
                     </Marker>
                   )}
+                  {/* [NEW] Marker Driver Realtime */}
+                  {driverLocation && driverIcon && (
+                    <Marker position={driverLocation} icon={driverIcon}>
+                        <Popup>Lokasi Mitra</Popup>
+                    </Marker>
+                  )}
                 </MapContainer>
             </div>
         </div>
@@ -763,12 +806,6 @@ export default function OrderDetailPage({ params }: PageProps) {
       </main>
 
       {/* 9. FLOATING BOTTOM ACTION BAR */}
-      {/* NOTE FOR DEVELOPERS:
-          BottomNav component (in global layout) has z-index 99.
-          We set this Action Bar to z-[1000] to ensure it sits ON TOP of the BottomNav 
-          when viewed on mobile devices, preventing user frustration.
-          We also ensure the page has enough padding-bottom (pb-40) so content scrolls fully.
-      */}
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 flex gap-2 z-[1000] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         
         {order.status === 'pending' && (
@@ -791,7 +828,7 @@ export default function OrderDetailPage({ params }: PageProps) {
         {order.status === 'waiting_approval' && !hasUnpaidFees && (
           <div className="flex-1 flex gap-2">
              <button
-                onClick={() => { setActionReason(''); setActiveModal('dispute'); }}
+                onClick={() => { setActionReason(''); setDisputeFiles([]); setActiveModal('dispute'); }}
                 disabled={isActionLoading}
                 className="w-10 flex items-center justify-center bg-gray-100 text-gray-600 rounded-lg border border-gray-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
                 title="Ajukan Komplain"
@@ -852,6 +889,32 @@ export default function OrderDetailPage({ params }: PageProps) {
                         placeholder="Tulis alasan di sini..."
                         className="w-full h-24 p-3 bg-white border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500 outline-none resize-none"
                     />
+                    
+                    {/* [NEW] File Upload Input for Dispute */}
+                    {activeModal === 'dispute' && (
+                        <div className="mt-3">
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">Bukti Foto (Opsional)</label>
+                            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-red-200 hover:bg-red-50 transition-colors">
+                                <div className="flex flex-col items-center justify-center pt-3 pb-4">
+                                    <Icons.Clip />
+                                    <p className="text-[10px] text-gray-500 mt-1">Klik untuk upload foto</p>
+                                </div>
+                                <input type="file" className="hidden" multiple accept="image/*" onChange={handleFileSelect} />
+                            </label>
+                            {disputeFiles.length > 0 && (
+                                <div className="mt-2 grid grid-cols-4 gap-2">
+                                    {disputeFiles.map((file, i) => (
+                                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200">
+                                            <Image src={URL.createObjectURL(file)} alt="preview" fill className="object-cover" />
+                                            <button onClick={() => removeDisputeFile(i)} className="absolute top-0 right-0 bg-red-600 text-white p-0.5 rounded-bl shadow">
+                                                <Icons.XCircle />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
                 <div className="p-4 bg-gray-50 flex gap-3 border-t border-gray-100">
                     <button 

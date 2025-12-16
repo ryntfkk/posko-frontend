@@ -196,7 +196,15 @@ export default function HomePage() {
       {/* MOBILE HEADER */}
       <div className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-2.5 flex items-center justify-between shadow-sm transition-all">
           <div className="flex items-center gap-2">
-            <div className="relative w-6 h-6"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
+            <div className="relative w-6 h-6">
+                <Image 
+                    src="/logo.png" 
+                    alt="Posko Logo" 
+                    fill 
+                    className="object-contain"
+                    sizes="24px" 
+                />
+            </div>
             <div>
               <h1 className="text-sm font-black text-gray-900 leading-none tracking-tight">POSKO<span className="text-red-600">.</span></h1>
             </div>
@@ -211,6 +219,7 @@ export default function HomePage() {
                      alt="Avatar" 
                      fill 
                      className="object-cover"
+                     sizes="28px"
                    />
                  </div>
                </Link>
@@ -227,7 +236,15 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-10">
               <Link href="/" className="flex items-center gap-2">
-                <div className="relative w-8 h-8"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
+                <div className="relative w-8 h-8">
+                    <Image 
+                        src="/logo.png" 
+                        alt="Posko Logo" 
+                        fill 
+                        className="object-contain"
+                        sizes="32px"
+                    />
+                </div>
                 <span className="text-xl font-black text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
               </Link>
               <nav className="flex gap-6 text-sm font-bold text-gray-600">
@@ -257,7 +274,13 @@ export default function HomePage() {
                     <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
                         <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900 leading-tight">Halo, {isLoadingProfile ? '...' : profileName.split(' ')[0]}</p></div>
                         <div className="w-8 h-8 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
-                          <Image src={profileAvatar} alt="Profile" fill className="object-cover" />
+                          <Image 
+                            src={profileAvatar} 
+                            alt="Profile" 
+                            fill 
+                            className="object-cover" 
+                            sizes="32px"
+                          />
                         </div>
                     </button>
                     {isProfileOpen && (
@@ -267,7 +290,13 @@ export default function HomePage() {
                                 {/* Profile Dropdown Content */}
                                 <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
                                     <div className="w-9 h-9 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
-                                      <Image src={profileAvatar} alt="Avatar" fill className="object-cover" />
+                                      <Image 
+                                        src={profileAvatar} 
+                                        alt="Avatar" 
+                                        fill 
+                                        className="object-cover" 
+                                        sizes="36px"
+                                      />
                                     </div>
                                     <div className="min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p><p className="text-[10px] text-gray-500 truncate">{profileEmail}</p><span className="inline-block mt-1 px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded uppercase tracking-wider border border-red-100">{profileBadge}</span></div>
                                 </div>

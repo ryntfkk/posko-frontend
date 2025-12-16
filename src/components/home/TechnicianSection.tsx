@@ -161,8 +161,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                 return 'Lokasi Mitra';
              };
 
-             // [PERBAIKAN UTAMA] Logic Link ke Profil
-             // Menggunakan username jika ada, jika tidak fallback ke ID
+             // Link ke Profil
              const profileLink = prov.userId?.username 
                 ? `/u/${prov.userId.username}` 
                 : `/u/${prov._id}`;
@@ -179,7 +178,8 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                     src={prov.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
                     alt={prov.userId?.fullName || 'Mitra'}
                     fill
-                    sizes="(max-width: 768px) 128px, 192px"
+                    // [PERBAIKAN] Menambahkan properti sizes
+                    sizes="(max-width: 640px) 128px, (max-width: 1024px) 192px, 256px"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
 

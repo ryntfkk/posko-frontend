@@ -93,6 +93,7 @@ export default function HomeBanner() {
                   fill
                   className="object-cover"
                   priority={index === 0}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1280px"
                 />
               </Link>
             ) : (
@@ -103,6 +104,7 @@ export default function HomeBanner() {
                   fill
                   className="object-cover"
                   priority={index === 0}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1280px"
                 />
               </div>
             )}

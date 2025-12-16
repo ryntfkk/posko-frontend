@@ -53,14 +53,15 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     // 2. Inisialisasi Socket
     const socketUrl = getSocketUrl();
-    console.log('[Socket] Initializing connection to:', socketUrl);
+    // console.log('[Socket] Initializing connection to:', socketUrl);
 
     const newSocket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['websocket', 'polling'], // Prioritaskan websocket
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 3000,
+      autoConnect: true,
     });
 
     // 3. Setup Listeners
@@ -70,12 +71,13 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     newSocket.on('disconnect', () => {
-      console.log('[Socket] Disconnected');
+      // console.log('[Socket] Disconnected');
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (err) => {
-      console.error('[Socket] Connection Error:', err.message);
+      // Suppress error log agar tidak spam di console saat dev
+      console.warn('[Socket] Connection Warning:', err.message);
     });
 
     // --- GLOBAL EVENT LISTENERS ---
@@ -108,7 +110,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     // B. Notifikasi Chat Masuk
     newSocket.on('notification:new_message', (data: any) => {
-        console.log('[Socket] New Message:', data);
+        // console.log('[Socket] New Message:', data);
         
         // Refresh List Chat
         queryClient.invalidateQueries({ queryKey: ['chats'] });
@@ -124,6 +126,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Cleanup saat unmount
     return () => {
+      // Hapus listeners dulu sebelum disconnect untuk menghindari memory leak
+      newSocket.removeAllListeners();
       newSocket.disconnect();
     };
   }, [queryClient, router]);

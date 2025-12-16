@@ -10,6 +10,11 @@ export const createOrder = (data: CreateOrderPayload) => {
   formData.append('providerId', data.providerId || '');
   formData.append('orderType', data.orderType);
   formData.append('totalAmount', data.totalAmount.toString());
+  
+  // [FIX] Append Admin Fee & Discount agar Backend menyimpan data keuangan yang akurat
+  if (data.adminFee) formData.append('adminFee', data.adminFee.toString());
+  if (data.discountAmount) formData.append('discountAmount', data.discountAmount.toString());
+
   formData.append('scheduledAt', data.scheduledAt);
   formData.append('orderNote', data.orderNote || '');
   if (data.voucherCode) formData.append('voucherCode', data.voucherCode);
@@ -36,7 +41,7 @@ export const createOrder = (data: CreateOrderPayload) => {
   });
 };
 
-// [FIXED] List Orders dengan Pagination
+// List Orders dengan Pagination
 export const listOrders = (view: 'customer' | 'provider' = 'customer', page = 1, limit = 10) => {
   return api.get(`/orders?view=${view}&page=${page}&limit=${limit}`);
 };
@@ -71,9 +76,20 @@ export const cancelOrder = (orderId: string, reason: string) => {
   return api.post(`/orders/${orderId}/cancel`, { reason });
 };
 
-// Dispute Order (Customer)
-export const disputeOrder = (orderId: string, reason: string) => {
-  return api.post(`/orders/${orderId}/dispute`, { reason });
+// Dispute Order (Customer) - Support File Upload
+export const disputeOrder = (orderId: string, reason: string, files?: File[]) => {
+  const formData = new FormData();
+  formData.append('reason', reason);
+  
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('evidence', file);
+    });
+  }
+
+  return api.post(`/orders/${orderId}/dispute`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
 };
 
 // Request Additional Fee

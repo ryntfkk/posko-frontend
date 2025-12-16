@@ -20,7 +20,13 @@ export default function Footer() {
           <div className="col-span-2 lg:col-span-1 space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative w-6 h-6 opacity-90">
-                <Image src="/logo.png" alt="Posko Logo" fill className="object-contain" />
+                <Image 
+                  src="/logo.png" 
+                  alt="Posko Logo" 
+                  fill 
+                  className="object-contain" 
+                  sizes="24px"
+                />
               </div>
               <span className="text-lg font-black text-gray-900 tracking-tight">
                 POSKO<span className="text-red-600">.</span>
