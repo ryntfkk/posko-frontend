@@ -148,10 +148,13 @@ function OrderSummaryContent() {
 
       if (checkoutType === 'basic') {
         if (item.orderType !== 'basic') return false;
+        
+        // [PERBAIKAN] Normalisasi kategori agar pencocokan string lebih robust (service-ac == Service AC)
         if (categoryParam) {
-          const itemCategory = (item.category ??  '').toLowerCase();
-          const filterCategory = categoryParam.toLowerCase();
-          return itemCategory === filterCategory;
+          const itemCategoryNormalized = (item.category ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const filterCategoryNormalized = categoryParam.toLowerCase().replace(/[^a-z0-9]/g, '');
+          
+          return itemCategoryNormalized === filterCategoryNormalized;
         }
         return true;
       } else {

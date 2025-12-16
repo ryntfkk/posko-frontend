@@ -16,7 +16,6 @@ export interface CartItem {
 }
 
 const CART_KEY = 'posko_cart';
-const DEBOUNCE_DELAY_MS = 300; // Tunggu 300ms sebelum tulis ke storage
 
 export const getCartItemId = (serviceId: string, orderType: 'direct' | 'basic', providerId?: string | null) => {
     return `${serviceId}-${orderType}-${providerId || 'default'}`;
@@ -61,7 +60,9 @@ export const useCart = () => {
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // 2. [OPTIMIZATION] Debounced Save ke localStorage
+    // 2. [CRITICAL FIX] Direct Save ke localStorage
+    // Mekanisme debounce dihapus agar data PASTI tersimpan sebelum user navigasi (pindah halaman).
+    // Ini mencegah kasus "Keranjang Kosong" saat user klik Checkout dengan cepat.
     useEffect(() => {
         // Jangan simpan jika belum inisialisasi atau update berasal dari tab lain
         if (!isInitialized) return;
@@ -71,16 +72,11 @@ export const useCart = () => {
             return;
         }
 
-        // Debounce: Tunda penulisan ke disk agar UI tidak blocking saat user spam klik
-        const timeoutId = setTimeout(() => {
-            try {
-                localStorage.setItem(CART_KEY, JSON.stringify(cart));
-            } catch (e) {
-                console.error("[Cart] Save error:", e);
-            }
-        }, DEBOUNCE_DELAY_MS);
-
-        return () => clearTimeout(timeoutId);
+        try {
+            localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        } catch (e) {
+            console.error("[Cart] Save error:", e);
+        }
     }, [cart, isInitialized]);
 
     // [HELPER] Cek konflik lebih robust (Strict Single Provider Rule)
