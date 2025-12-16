@@ -9,15 +9,20 @@ import dynamic from 'next/dynamic';
 import { useCart } from '@/features/cart/useCart';
 import { createOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api'; 
-import { CreateOrderPayload, CustomerContact, PropertyDetails, ScheduledTimeSlot } from '@/features/orders/types';
+import { CreateOrderPayload, CustomerContact, PropertyDetails, ScheduledTimeSlot, Attachment } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans'; 
 import { fetchProfile } from '@/features/auth/api';
 import { User, Address, GeoLocation } from '@/features/auth/types';
 
+// Import API & Types Settings & Vouchers
 import { settingsApi } from '@/features/settings/api';
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
 
+// Import komponen lokal
+import { AttachmentUploader } from '@/components/OrderComponents'; 
+
+// Import Dynamic untuk Map
 const LocationPicker = dynamic(
   () => import('@/components/LocationPicker'),
   { 
@@ -55,30 +60,38 @@ function OrderSummaryContent() {
   
   const isSnapLoaded = useMidtrans();
 
+  // State Data User
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
+  // State Settings & Vouchers
   const [adminFee, setAdminFee] = useState(0);
   const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
 
+  // State Form/Input
   const [isProcessing, setIsProcessing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   
+  // State Promo (Modal & Code)
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: number} | null>(null);
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   
+  // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
   const [orderLocation, setOrderLocation] = useState<GeoLocation | undefined>(undefined);
   
-  // State Kontak
+  // Customer Contact
   const [customerContact, setCustomerContact] = useState<CustomerContact>({
     name: '',
     phone: '',
     alternatePhone: ''
   });
-  const [isEditingContact, setIsEditingContact] = useState(false); // New: Toggle edit mode
+  const [showAlternatePhone, setShowAlternatePhone] = useState(false);
+  
+  // Order Note
+  const [orderNote, setOrderNote] = useState('');
   
   // Property Details
   const [propertyDetails, setPropertyDetails] = useState<PropertyDetails>({
@@ -95,9 +108,17 @@ function OrderSummaryContent() {
     preferredEnd: '',
     isFlexible: true
   });
+  
+  // Attachments 
+  interface UIAttachment extends Attachment {
+    file?: File;
+  }
+  const [attachments, setAttachments] = useState<UIAttachment[]>([]);
 
+  // Parse Query Params
   const checkoutType = searchParams?.get('type') as 'direct' | 'basic' || 'basic';
   const selectedProviderId = searchParams?.get('providerId') || null;
+  const categoryParam = searchParams?.get('category') || null;
 
   // Filter Keranjang
   const activeCartItems = useMemo(() => {
@@ -105,51 +126,48 @@ function OrderSummaryContent() {
       if (item.quantity <= 0) return false;
 
       if (checkoutType === 'basic') {
-        return item.orderType === 'basic';
+        if (item.orderType !== 'basic') return false;
+        if (categoryParam) {
+          const itemCategory = (item.category ??  '').toLowerCase();
+          const filterCategory = categoryParam.toLowerCase();
+          return itemCategory === filterCategory;
+        }
+        return true;
       } else {
         return item.orderType === 'direct' && item.providerId === selectedProviderId;
       }
     });
-  }, [cart, checkoutType, selectedProviderId]);
+  }, [cart, checkoutType, selectedProviderId, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // Helper untuk mendapatkan info Provider jika Direct Order
-  const directProviderInfo = useMemo(() => {
-    if (checkoutType === 'direct' && activeCartItems.length > 0) {
-      const item = activeCartItems[0];
-      return {
-        id: item.providerId,
-        name: item.providerName || 'Mitra Posko',
-        bookedDates: (item as any).bookedDates || [],
-        blockedDates: (item as any).blockedDates || []
-      };
-    }
-    return null;
-  }, [checkoutType, activeCartItems]);
-
+  // Ekstrak provider data untuk validasi tanggal
   const providerData = useMemo(() => {
-    if (directProviderInfo) {
+    if (checkoutType === 'direct' && activeCartItems.length > 0) {
+      const firstItem = activeCartItems[0];
       return {
-        bookedDates: directProviderInfo.bookedDates,
-        blockedDates: directProviderInfo.blockedDates
+        bookedDates: (firstItem as any).bookedDates || [],
+        blockedDates: (firstItem as any).blockedDates || []
       };
     }
     return { bookedDates: [], blockedDates: [] };
-  }, [directProviderInfo]);
+  }, [checkoutType, activeCartItems]);
 
+  // Helper function untuk cek apakah tanggal tidak tersedia
   const isDateUnavailable = useCallback((dateString: string): { unavailable: boolean; reason: string } => {
     if (!dateString) return { unavailable: false, reason: '' };
     
     const selectedDate = new Date(dateString);
     const dateOnly = selectedDate.toISOString().split('T')[0];
     
+    // Cek apakah tanggal sudah lewat
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (selectedDate < today) {
       return { unavailable: true, reason: 'Tanggal sudah lewat' };
     }
     
+    // Cek blockedDates
     const isBlocked = providerData.blockedDates.some((d: string) => {
       const blockedDate = d.split('T')[0];
       return blockedDate === dateOnly;
@@ -159,6 +177,7 @@ function OrderSummaryContent() {
       return { unavailable: true, reason: 'Mitra sedang libur pada tanggal ini' };
     }
     
+    // Cek bookedDates
     const isBooked = providerData.bookedDates.some((d: string) => {
       const bookedDate = d.split('T')[0];
       return bookedDate === dateOnly;
@@ -171,9 +190,11 @@ function OrderSummaryContent() {
     return { unavailable: false, reason: '' };
   }, [providerData]);
 
+  // Load User Profile, Settings, & Vouchers
   useEffect(() => {
     const loadData = async () => {
       try {
+        // 1.Load Profile
         const profileRes = await fetchProfile();
         const profile = profileRes.data.profile;
         setUserProfile(profile);
@@ -191,11 +212,13 @@ function OrderSummaryContent() {
           alternatePhone: ''
         });
 
+        // 2.Load Global Config
         const settingsRes = await settingsApi.getGlobalConfig();
         if (settingsRes.data) {
             setAdminFee(settingsRes.data.adminFee);
         }
 
+        // 3.Load My Vouchers
         const vouchersRes = await voucherApi.getMyVouchers();
         if (vouchersRes.data) {
             setAvailableVouchers(vouchersRes.data);
@@ -210,6 +233,24 @@ function OrderSummaryContent() {
     loadData();
   }, []);
 
+  // Handler add attachment pakai File
+  const handleAddAttachment = useCallback((file: File, desc: string) => {
+    const previewUrl = URL.createObjectURL(file);
+    
+    setAttachments(prev => [...prev, {
+      url: previewUrl, 
+      type: 'photo',
+      description: desc.trim(),
+      file: file 
+    }]);
+  }, []);
+
+  // Handler remove attachment
+  const handleRemoveAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Handler update lokasi dari Map
   const handleLocationChange = useCallback((lat: number, lng: number) => {
     setOrderLocation({
         type: 'Point',
@@ -217,6 +258,7 @@ function OrderSummaryContent() {
     });
   }, []);
 
+  // Handler Promo
   const handleApplyPromo = async (code: string) => {
     if (!code) return;
     setIsCheckingVoucher(true);
@@ -239,14 +281,14 @@ function OrderSummaryContent() {
         setPromoCodeInput('');
         
         if (eligibleTotal < currentTotalAmount) {
-             alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}.`);
+             alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}.(Hanya berlaku untuk layanan tertentu di keranjang Anda)`);
         } else {
-             alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan.`);
+             alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan.Hemat ${formatCurrency(estimatedDiscount)}`);
         }
 
     } catch (error: any) {
         console.error("Voucher Error:", error);
-        alert(error.response?.data?.message || 'Kode promo tidak valid.');
+        alert(error.response?.data?.message || 'Kode promo tidak valid atau tidak memenuhi syarat.');
         setAppliedPromo(null);
     } finally {
         setIsCheckingVoucher(false);
@@ -257,6 +299,7 @@ function OrderSummaryContent() {
       setAppliedPromo(null);
   };
 
+  // Handler untuk validasi perubahan tanggal
   const handleScheduledAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setScheduledAt(newValue);
@@ -265,13 +308,14 @@ function OrderSummaryContent() {
       const validation = isDateUnavailable(newValue);
       if (validation.unavailable) {
         setTimeout(() => {
-          alert(`⚠️ Peringatan: ${validation.reason}.`);
+          alert(`⚠️ Peringatan: ${validation.reason}.Silakan pilih tanggal lain untuk menghindari kegagalan pembayaran.`);
           setScheduledAt('');
         }, 100);
       }
     }
   };
 
+  // Submit Order
   const handlePlaceOrderAndPay = async () => {
     if (!scheduledAt) {
       alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
@@ -281,7 +325,7 @@ function OrderSummaryContent() {
     if (checkoutType === 'direct') {
       const validation = isDateUnavailable(scheduledAt);
       if (validation.unavailable) {
-        alert(`❌ ${validation.reason}.`);
+        alert(`❌ ${validation.reason}.Silakan pilih tanggal lain.`);
         return;
       }
     }
@@ -305,8 +349,12 @@ function OrderSummaryContent() {
 
     try {
       const mainItem = activeCartItems[0];
+      
       const finalAmount = Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0));
 
+      // [PERBAIKAN UTAMA DI SINI]
+      // Menggunakan 'as any' pada attachments untuk mem-bypass strict typing 
+      // agar kita bisa mengirim properti 'file' yang dibutuhkan oleh api.ts
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
@@ -324,40 +372,51 @@ function OrderSummaryContent() {
         customerContact: {
           name: customerContact.name.trim() || userProfile?.fullName || '',
           phone: customerContact.phone.trim(),
-          alternatePhone: customerContact.alternatePhone?.trim() || ''
+          alternatePhone: showAlternatePhone ? (customerContact.alternatePhone?.trim() || '') : ''
         },
-        orderNote: '', // Removed note
+        orderNote: orderNote.trim(),
         propertyDetails: propertyDetails,
         scheduledTimeSlot: timeSlot,
-        attachments: [], // Removed attachments
+        // [UPDATE] Sertakan file asli (att.file)
+        attachments: attachments.map(att => ({
+            url: att.url, // Ini hanya blob URL preview
+            type: att.type,
+            description: att.description,
+            file: att.file // Penting: Ini yang akan dideteksi oleh api.ts untuk convert ke FormData
+        })) as any,
         voucherCode: appliedPromo?.code
       };
 
+      console.log("1.Membuat Order...", orderPayload);
       const orderRes = await createOrder(orderPayload);
-      const orderId = orderRes.data.data._id;
-      const orderNumber = orderRes.data.data.orderNumber;
+      const orderId = orderRes.data._id;
+      const orderNumber = orderRes.data.orderNumber;
       
-      if (!orderId) throw new Error('Gagal mendapatkan ID Order.');
-      
+      console.log("2.Meminta Token Pembayaran...");
       const paymentRes = await createPayment(orderId);
       const snapToken = paymentRes.data.snapToken;
 
+      console.log("3. Membuka Snap Midtrans...");
       if (window.snap) {
         window.snap.pay(snapToken, {
           onSuccess: (result) => {
+            console.log('✅ Pembayaran Berhasil:', result);
             alert(`Pembayaran Berhasil! Order: ${orderNumber}`);
             clearCart();
             router.push('/orders');
           },
           onPending: (result) => {
+            console.log('⏳ Menunggu Pembayaran:', result);
             alert(`Menunggu pembayaran untuk order ${orderNumber}...`);
             router.push(`/orders/${orderId}`);
           },
           onError: (result) => {
-            alert('Pembayaran gagal. Silakan coba lagi.');
+            console.error('❌ Gagal Bayar:', result);
+            alert('Pembayaran gagal. Silakan coba lagi dari halaman detail order.');
             router.push(`/orders/${orderId}`);
           },
           onClose: () => {
+            console.log('📦 Popup Ditutup. Order tersimpan.');
             router.push(`/orders/${orderId}`);
           }
         });
@@ -365,7 +424,15 @@ function OrderSummaryContent() {
 
     } catch (error: any) {
       console.error("❌ Error saat membuat order:", error);
-      alert(error.response?.data?.message || error.message || 'Terjadi kesalahan.');
+      
+      let errorMessage = 'Terjadi kesalahan.Silakan coba lagi.';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -383,6 +450,9 @@ function OrderSummaryContent() {
   if (activeCartItems.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
+        <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm0 0H7"></path>
+        </svg>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
         <Link href="/checkout" className="inline-block mt-4 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
           Kembali ke Layanan
@@ -393,6 +463,7 @@ function OrderSummaryContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans relative">
+      {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center gap-3 md:gap-4">
           <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600 p-1">
@@ -407,330 +478,418 @@ function OrderSummaryContent() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 md:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* LEFT COLUMN - Order Details */}
-          <div className="md:col-span-2 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-4 md:space-y-6">
+        
+        {/* Detail Item Pesanan */}
+        <section className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Item Pesanan</p>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Layanan yang dipesan</h2>
+            </div>
+            <button onClick={() => router.back()} className="text-xs md:text-sm font-bold text-red-600 hover:text-red-700 hover:underline">
+              Ubah
+            </button>
+          </div>
 
-            {/* 1. SECTION TYPE ORDER & MITRA (If Direct) */}
-            {checkoutType === 'direct' && directProviderInfo && (
-                <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
-                    <div className="absolute right-0 top-0 h-full w-32 bg-white/5 skew-x-12 transform translate-x-8"></div>
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Tipe Pesanan</p>
-                            <div className="flex items-center gap-2">
-                                <span className="bg-red-600 text-xs font-bold px-2 py-0.5 rounded text-white">Direct Booking</span>
-                            </div>
-                            <h2 className="text-xl font-bold mt-2">{directProviderInfo.name}</h2>
-                            <p className="text-xs text-gray-300">Mitra Pilihan Anda</p>
-                        </div>
-                        <div className="h-12 w-12 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
-                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        </div>
-                    </div>
+          <div className="space-y-3 md:space-y-4">
+            {activeCartItems.map((item) => (
+              <div key={item.id} className="flex items-start justify-between gap-3 py-3 border-b border-gray-50 last:border-b-0">
+                <div className="flex-1">
+                  <h3 className="text-sm md:text-base font-bold text-gray-900 line-clamp-2">{item.serviceName}</h3>
+                  <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">
+                    {item.orderType === 'direct' ? `Mitra: ${item.providerName}` : 'Cari Otomatis'}
+                  </p>
+                  <p className="text-xs text-gray-600 font-medium mt-1">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
                 </div>
-            )}
-            
-            {/* 2. SECTION LOKASI & PROPERTI */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b border-gray-50 pb-3">
-                <div className="flex items-center gap-2">
-                   <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                   </div>
-                   <div>
-                      <p className="text-[10px] font-semibold text-gray-500 uppercase">Destinasi</p>
-                      <h2 className="text-base font-bold text-gray-900">Lokasi & Properti</h2>
-                   </div>
-                </div>
-                <button onClick={() => router.push('/profile')} className="text-xs font-bold text-red-600 hover:underline">Ganti Alamat</button>
+                <p className="text-sm md:text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(item.totalPrice)}</p>
               </div>
+            ))}
+          </div>
+        </section>
 
-              {selectedAddress && orderLocation ? (
-                 <div className="space-y-4">
-                     {/* Address Card */}
-                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <div className="flex gap-3">
-                            <div className="mt-1">
-                                <span className="block w-2 h-2 rounded-full bg-blue-600 ring-4 ring-blue-100"></span>
-                            </div>
-                            <div>
-                                <p className="font-bold text-gray-900 text-sm">{userProfile?.fullName}</p>
-                                <p className="text-gray-600 text-xs mt-1 leading-relaxed">
-                                    {selectedAddress.detail}, {selectedAddress.village}, {selectedAddress.district}, {selectedAddress.city}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="mt-3 h-24 w-full rounded-lg overflow-hidden relative">
-                             <LocationPicker 
-                                initialLat={orderLocation.coordinates[1]} 
-                                initialLng={orderLocation.coordinates[0]}
-                                onLocationChange={handleLocationChange}
-                            />
-                        </div>
-                     </div>
-
-                     {/* Property Details Inputs */}
-                     <div className="grid grid-cols-2 gap-4">
-                         <div>
-                            <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Tipe</label>
-                            <select 
-                                value={propertyDetails.type}
-                                onChange={(e) => setPropertyDetails(prev => ({...prev, type: e.target.value}))}
-                                className="w-full text-sm bg-white border border-gray-200 rounded-lg p-2 focus:ring-1 focus:ring-red-500 outline-none"
-                            >
-                                <option value="">Pilih...</option>
-                                <option value="rumah">Rumah</option>
-                                <option value="apartemen">Apartemen</option>
-                                <option value="kantor">Kantor</option>
-                                <option value="ruko">Ruko</option>
-                            </select>
-                         </div>
-                         <div>
-                             <label className="text-[10px] uppercase font-bold text-gray-500 mb-1 block">Lantai</label>
-                             <input 
-                                type="number" 
-                                min="0"
-                                value={propertyDetails.floor ?? ''}
-                                onChange={(e) => setPropertyDetails(prev => ({...prev, floor: e.target.value ? parseInt(e.target.value) : null}))}
-                                className="w-full text-sm bg-white border border-gray-200 rounded-lg p-2 outline-none"
-                                placeholder="Dasar/1/2..."
-                             />
-                         </div>
-                     </div>
-                     <div className="flex gap-4">
-                        <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                            <input type="checkbox" checked={propertyDetails.hasParking} onChange={(e) => setPropertyDetails(prev => ({...prev, hasParking: e.target.checked}))} className="rounded text-red-600"/>
-                            Ada Parkir
-                        </label>
-                        <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                            <input type="checkbox" checked={propertyDetails.hasElevator} onChange={(e) => setPropertyDetails(prev => ({...prev, hasElevator: e.target.checked}))} className="rounded text-red-600"/>
-                            Ada Lift
-                        </label>
-                     </div>
-                     <input 
-                        type="text" 
-                        value={propertyDetails.accessNote}
-                        onChange={(e) => setPropertyDetails(prev => ({...prev, accessNote: e.target.value}))}
-                        className="w-full text-xs bg-gray-50 border border-gray-200 rounded-lg p-2.5 outline-none focus:bg-white focus:border-red-300"
-                        placeholder="Catatan akses (misal: Pagar hitam, kunci dititip satpam)"
-                     />
-                 </div>
-              ) : (
-                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-xl text-sm border border-yellow-200">
-                    Mohon lengkapi alamat di profil Anda.
-                </div>
-              )}
-            </div>
-
-            {/* 3. SECTION JADWAL */}
+        {/* Informasi & Pembayaran */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          
+          {/* Kiri: Form Input */}
+          <div className="md:col-span-2 space-y-4 md:space-y-6 min-w-0">
+            
+            {/* KONTAK CUSTOMER */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-semibold text-gray-500 uppercase">Waktu</p>
-                        <h2 className="text-base font-bold text-gray-900">Jadwal Kunjungan</h2>
-                    </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="col-span-1 md:col-span-2">
-                         <label className="text-xs font-medium text-gray-600 mb-1 block">Tanggal Kunjungan <span className="text-red-500">*</span></label>
-                         <input 
-                            type="datetime-local"
-                            value={scheduledAt}
-                            onChange={handleScheduledAtChange}
-                            min={new Date().toISOString().slice(0, 16)}
-                            className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                <div>
+                  <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Kontak</p>
+                  <h2 className="text-base md:text-lg font-bold text-gray-900">Info Kontak <span className="text-red-500">*</span></h2>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
+                    <input 
+                      type="text"
+                      value={customerContact.name}
+                      onChange={(e) => setCustomerContact(prev => ({...prev, name: e.target.value}))}
+                      placeholder="Nama penerima"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">No. HP Utama <span className="text-red-500">*</span></label>
+                    <input 
+                      type="tel"
+                      value={customerContact.phone}
+                      onChange={(e) => setCustomerContact(prev => ({...prev, phone: e.target.value}))}
+                      placeholder="08xx-xxxx-xxxx"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Toggle Nomor Cadangan */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <input 
+                            type="checkbox"
+                            checked={showAlternatePhone}
+                            onChange={(e) => setShowAlternatePhone(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
-                    </div>
-                    <div>
-                         <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Mulai (Pref)</label>
-                         <input type="time" value={timeSlot.preferredStart} onChange={(e) => setTimeSlot(prev => ({...prev, preferredStart: e.target.value}))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"/>
-                    </div>
-                    <div>
-                         <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Selesai (Pref)</label>
-                         <input type="time" value={timeSlot.preferredEnd} onChange={(e) => setTimeSlot(prev => ({...prev, preferredEnd: e.target.value}))} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"/>
-                    </div>
-                </div>
-            </div>
+                        <span className="text-xs font-medium text-gray-700">Tambah nomor darurat / cadangan</span>
+                    </label>
 
-            {/* 4. SECTION KONTAK (Preview Mode with Edit Toggle) */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-semibold text-gray-500 uppercase">Penerima</p>
-                            <h2 className="text-base font-bold text-gray-900">Info Kontak</h2>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={() => setIsEditingContact(!isEditingContact)} 
-                        className="text-xs font-bold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded transition-colors"
-                    >
-                        {isEditingContact ? 'Selesai' : 'Ubah'}
-                    </button>
-                </div>
-
-                {!isEditingContact ? (
-                    // PREVIEW MODE
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-1">
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Nama</p>
-                            <p className="font-bold text-gray-900 text-base">{customerContact.name || '-'}</p>
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Telepon</p>
-                            <p className="font-bold text-gray-900 text-base">{customerContact.phone || '-'}</p>
-                        </div>
-                        {customerContact.alternatePhone && (
-                            <div className="space-y-1">
-                                <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Alt. Phone</p>
-                                <p className="font-medium text-gray-700 text-sm">{customerContact.alternatePhone}</p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    // EDIT MODE
-                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
-                                <input 
-                                    type="text"
-                                    value={customerContact.name}
-                                    onChange={(e) => setCustomerContact(prev => ({...prev, name: e.target.value}))}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-xs font-medium text-gray-600 mb-1 block">No. HP Utama <span className="text-red-500">*</span></label>
-                                <input 
-                                    type="tel"
-                                    value={customerContact.phone}
-                                    onChange={(e) => setCustomerContact(prev => ({...prev, phone: e.target.value}))}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                             <label className="text-xs font-medium text-gray-600 mb-1 block">Nomor Darurat (Opsional)</label>
+                    {showAlternatePhone && (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                              <input 
                                 type="tel"
                                 value={customerContact.alternatePhone}
                                 onChange={(e) => setCustomerContact(prev => ({...prev, alternatePhone: e.target.value}))}
-                                placeholder="Nomor cadangan..."
-                                className="w-full md:w-1/2 px-4 py-2 border border-gray-200 rounded-xl text-sm outline-none"
+                                placeholder="Nomor HP Alternatif"
+                                className="w-full md:w-1/2 min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                             />
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
+              </div>
             </div>
 
-            {/* 5. SECTION DETAIL ITEM */}
+            {/* JADWAL KUNJUNGAN */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                         <div className="w-8 h-8 bg-orange-50 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                         </div>
-                         <h2 className="text-base font-bold text-gray-900">Rincian Layanan</h2>
-                    </div>
+              <div>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Waktu Kedatangan</h2>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tanggal & Waktu <span className="text-red-500">*</span></label>
+                  <input 
+                    type="datetime-local"
+                    value={scheduledAt}
+                    onChange={handleScheduledAtChange}
+                    min={new Date().toISOString().slice(0, 16)}
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  />
+                  {checkoutType === 'direct' && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      💡 Pilih tanggal yang tersedia. Sistem akan memvalidasi ketersediaan mitra.
+                    </p>
+                  )}
                 </div>
-                <div className="space-y-3">
-                    {activeCartItems.map((item) => (
-                    <div key={item.id} className="flex items-start justify-between gap-3 py-3 border-b border-gray-50 last:border-b-0">
-                        <div>
-                        <h3 className="text-sm font-bold text-gray-900">{item.serviceName}</h3>
-                        <p className="text-xs text-gray-600 mt-1">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Mulai (Pref)</label>
+                    <input 
+                      type="time"
+                      value={timeSlot.preferredStart}
+                      onChange={(e) => setTimeSlot(prev => ({...prev, preferredStart: e.target.value}))}
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Selesai (Pref)</label>
+                    <input 
+                      type="time"
+                      value={timeSlot.preferredEnd}
+                      onChange={(e) => setTimeSlot(prev => ({...prev, preferredEnd: e.target.value}))}
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                
+                <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                  <input 
+                    type="checkbox"
+                    checked={timeSlot.isFlexible}
+                    onChange={(e) => setTimeSlot(prev => ({...prev, isFlexible: e.target.checked}))}
+                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-xs md:text-sm text-gray-700">Waktu fleksibel</span>
+                </label>
+              </div>
+            </div>
+
+            {/* ALAMAT & MAPS INTEGRATION */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Lokasi</p>
+                  <h2 className="text-base md:text-lg font-bold text-gray-900">Alamat Pelayanan</h2>
+                </div>
+                <button 
+                   onClick={() => router.push('/profile')}
+                   className="text-xs md:text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                >
+                    Ganti Alamat
+                </button>
+              </div>
+              
+              {selectedAddress && orderLocation ?  (
+                 <div className="space-y-4">
+                    <div className="text-sm text-gray-700 space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <p className="font-bold text-gray-900 leading-snug text-sm md:text-base">
+                            {userProfile?.fullName} ({selectedAddress.city})
+                        </p>
+                        <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                            {selectedAddress.detail}, Kel. {selectedAddress.village}, Kec.{selectedAddress.district}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
+                             <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Titik Peta</span>
+                             <p className="text-gray-500 text-[10px]">
+                                {orderLocation.coordinates[1].toFixed(5)}, {orderLocation.coordinates[0].toFixed(5)}
+                            </p>
                         </div>
-                        <p className="text-sm font-bold text-gray-900">{formatCurrency(item.totalPrice)}</p>
                     </div>
-                    ))}
+
+                    <div className="mt-2">
+                        <p className="text-xs text-gray-500 mb-2">Geser pin merah untuk memastikan titik lokasi akurat.</p>
+                        <LocationPicker 
+                            initialLat={orderLocation.coordinates[1]} 
+                            initialLng={orderLocation.coordinates[0]}
+                            onLocationChange={handleLocationChange}
+                        />
+                    </div>
                 </div>
+              ) : (
+                <div className="text-sm text-gray-700 space-y-1 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                    <p className="font-bold text-gray-900">Alamat Belum Lengkap</p>
+                    <p className="text-yellow-800 text-xs">Silakan lengkapi alamat dan titik lokasi Anda di menu Akun.</p>
+                </div>
+              )}
+            </div>
+
+            {/* DETAIL PROPERTI (Layout Baru) */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+              <div>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Properti</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Detail Lokasi</h2>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Baris 1: Tipe Properti */}
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tipe Properti</label>
+                  <select 
+                    value={propertyDetails.type}
+                    onChange={(e) => setPropertyDetails(prev => ({...prev, type: e.target.value as PropertyDetails['type']}))}
+                    className="w-full px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  >
+                    <option value="">Pilih tipe...</option>
+                    <option value="rumah">Rumah</option>
+                    <option value="apartemen">Apartemen</option>
+                    <option value="kantor">Kantor</option>
+                    <option value="ruko">Ruko</option>
+                    <option value="kendaraan">Kendaraan</option>
+                    <option value="lainnya">Lainnya</option>
+                  </select>
+                </div>
+
+                {/* Baris 2: Lantai - Parkir - Lift */}
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                    <div className="w-full md:w-32">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai</label>
+                        <input 
+                            type="number"
+                            min="0"
+                            value={propertyDetails.floor ??  ''}
+                            onChange={(e) => setPropertyDetails(prev => ({...prev, floor: e.target.value ?  parseInt(e.target.value) : null}))}
+                            placeholder="Lt. ke"
+                            className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                        />
+                    </div>
+                    
+                    <div className="flex gap-4 md:pb-3">
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-transparent hover:border-gray-200 transition-all">
+                            <input 
+                                type="checkbox"
+                                checked={propertyDetails.hasParking}
+                                onChange={(e) => setPropertyDetails(prev => ({...prev, hasParking: e.target.checked}))}
+                                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-xs font-medium text-gray-700">Ada parkir</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-transparent hover:border-gray-200 transition-all">
+                            <input 
+                                type="checkbox"
+                                checked={propertyDetails.hasElevator}
+                                onChange={(e) => setPropertyDetails(prev => ({...prev, hasElevator: e.target.checked}))}
+                                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-xs font-medium text-gray-700">Ada lift</span>
+                        </label>
+                    </div>
+                </div>
+                
+                {/* Baris 3: Catatan Akses */}
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses</label>
+                  <input 
+                    type="text"
+                    value={propertyDetails.accessNote}
+                    onChange={(e) => setPropertyDetails(prev => ({...prev, accessNote: e.target.value}))}
+                    placeholder="Contoh: Pagar hitam, masuk lewat samping..."
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* DOKUMENTASI & CATATAN (DIGABUNG) */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+               {/* Bagian Catatan */}
+               <div className="space-y-3">
+                    <div>
+                        <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Tambahan</p>
+                        <h2 className="text-base md:text-lg font-bold text-gray-900">Catatan Order</h2>
+                    </div>
+                    <textarea 
+                        value={orderNote}
+                        onChange={(e) => setOrderNote(e.target.value.slice(0, 500))}
+                        placeholder="Tulis pesan tambahan atau instruksi khusus untuk mitra..."
+                        rows={2}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
+                    />
+               </div>
+
+               <div className="border-t border-gray-100"></div>
+
+               {/* Bagian Foto */}
+               <div className="space-y-3">
+                   <div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Lampiran Foto</h3>
+                        <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks.5 foto)</p>
+                   </div>
+                   <AttachmentUploader 
+                        attachments={attachments}
+                        onAdd={handleAddAttachment}
+                        onRemove={handleRemoveAttachment}
+                    />
+               </div>
             </div>
 
           </div>
 
-          {/* RIGHT COLUMN - Payment Summary */}
+          {/* Kanan: Ringkasan Pembayaran */}
           <div className="space-y-6">
-            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm sticky top-24 space-y-5">
-              <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Ringkasan Pembayaran</h2>
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 sticky top-24">
+              <h2 className="text-base md:text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Ringkasan Pembayaran</h2>
               
-              <div className="space-y-3 text-sm">
+              <div className="space-y-3 text-xs md:text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Harga Layanan</span>
+                  <span className="text-gray-600">Subtotal Layanan</span>
                   <span className="font-semibold text-gray-900">{formatCurrency(currentTotalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Biaya Layanan (Admin)</span>
-                  <span className="font-semibold text-gray-900">{adminFee === 0 ? 'Gratis' : formatCurrency(adminFee)}</span>
+                  <span className="text-gray-600">Biaya Platform (Admin)</span>
+                  <span className={`font-semibold ${adminFee === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    {adminFee === 0 ? 'Gratis' : formatCurrency(adminFee)}
+                  </span>
                 </div>
                 
-                {/* Promo Section */}
+                {/* PROMO CODE DISPLAY */}
                 {appliedPromo ?  (
-                   <div className="flex justify-between items-center text-green-600 bg-green-50 p-2.5 rounded-xl border border-green-100">
-                     <div>
-                        <span className="font-bold text-xs block">VOUCHER: {appliedPromo.code}</span>
+                   <div className="flex justify-between items-center text-green-600 bg-green-50 p-2 rounded-lg border border-green-100">
+                     <div className="flex flex-col">
+                        <span className="font-bold text-xs">Voucher: {appliedPromo.code}</span>
+                        <span className="text-[10px] text-green-700">Berhasil diterapkan</span>
                      </div>
                      <div className="flex items-center gap-2">
-                         <span className="font-bold text-sm">-{formatCurrency(appliedPromo.discount)}</span>
+                         <span className="font-semibold text-sm">-{formatCurrency(appliedPromo.discount)}</span>
                          <button onClick={handleRemovePromo} className="text-red-500 hover:text-red-700">
                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                          </button>
                      </div>
                    </div>
                 ) : (
-                    <button 
-                        onClick={() => setIsPromoModalOpen(true)}
-                        className="w-full py-2 border border-dashed border-gray-300 rounded-xl text-gray-500 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
-                        Gunakan Kode Promo / Voucher
-                    </button>
+                    <div className="pt-2">
+                        <button 
+                            onClick={() => setIsPromoModalOpen(true)}
+                            className="text-red-600 text-xs md:text-sm font-semibold hover:underline flex items-center gap-1"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            Makin hemat dengan promo? 
+                        </button>
+                    </div>
                 )}
+
               </div>
               
-              <div className="border-t border-dashed border-gray-200 pt-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-gray-900 font-bold text-sm mb-1">Total Tagihan</span>
-                  <span className="text-2xl font-black text-red-600">
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-900 font-bold text-sm md:text-base">Total Pembayaran</span>
+                  <span className="text-xl md:text-2xl font-black text-red-600">
                       {formatCurrency(Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0)))}
                   </span>
                 </div>
               </div>
 
+              {/* TOMBOL BAYAR UTAMA */}
               <button 
                 onClick={handlePlaceOrderAndPay}
-                disabled={isProcessing}
-                className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
-                  isProcessing 
+                disabled={isProcessing || !selectedAddress || !scheduledAt || !customerContact.phone.trim()}
+                className={`w-full py-3 md:py-4 rounded-xl font-bold text-white text-sm md:text-base shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
+                  isProcessing || !selectedAddress || !scheduledAt || !customerContact.phone.trim()
                     ? 'bg-gray-400 cursor-not-allowed shadow-none' 
                     : 'bg-red-600 hover:bg-red-700 shadow-red-200 hover:-translate-y-1'
                 }`}
               >
-                {isProcessing ? 'Memproses...' : 'Bayar Sekarang'}
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 md:w-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Bayar Sekarang
+                  </>
+                )}
               </button>
 
-              <p className="text-[10px] text-gray-400 text-center leading-tight">
-                Dengan menekan tombol Bayar, pesanan akan diteruskan ke mitra dan Anda menyetujui S&K berlaku.
+              <p className="text-[10px] md:text-xs text-gray-500 text-center">
+                Dengan melanjutkan, Anda menyetujui Syarat & Ketentuan Posko.
               </p>
             </div>
           </div>
-        </div>
+        </section>
       </main>
 
-      {/* Modal Promo (No changes needed just keeping structure) */}
+      {/* MODAL PROMO */}
       {isPromoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-20">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-bold text-lg text-gray-900">Pakai Promo</h3>
                     <button onClick={() => setIsPromoModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -739,55 +898,71 @@ function OrderSummaryContent() {
                 </div>
                 
                 <div className="p-4 space-y-4">
+                    {/* Input Code */}
                     <div className="flex gap-2">
                         <input 
                             type="text" 
                             value={promoCodeInput}
                             onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                            placeholder="Ketik kode..."
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none uppercase font-bold"
+                            placeholder="Masukkan kode voucher"
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none uppercase"
                         />
                         <button 
                             onClick={() => handleApplyPromo(promoCodeInput)}
                             disabled={!promoCodeInput || isCheckingVoucher}
-                            className="px-6 py-2 bg-red-600 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-red-700 transition-colors"
+                            className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
                         >
+                            {isCheckingVoucher && (
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            )}
                             Pakai
                         </button>
                     </div>
                     
+                    {/* List Voucher */}
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Voucher Anda</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Voucher Tersedia</p>
                         {availableVouchers.length > 0 ? (
-                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                 {availableVouchers.map((voucher) => (
                                     <div 
                                         key={voucher._id} 
+                                        className={`border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer ${currentTotalAmount < voucher.minPurchase ? 'opacity-50' : ''}`}
                                         onClick={() => {
                                             if (currentTotalAmount >= voucher.minPurchase) {
                                                 handleApplyPromo(voucher.code);
                                             }
                                         }}
-                                        className={`border rounded-xl p-3 flex justify-between items-center cursor-pointer transition-all ${currentTotalAmount < voucher.minPurchase ? 'opacity-50 grayscale border-gray-100' : 'hover:border-red-300 hover:bg-red-50 border-gray-200'}`}
                                     >
                                         <div>
                                             <p className="font-bold text-gray-900">{voucher.code}</p>
                                             <p className="text-xs text-gray-500">{voucher.description}</p>
+                                            {currentTotalAmount < voucher.minPurchase && (
+                                                <p className="text-[10px] text-red-500 mt-1">Min.belanja {formatCurrency(voucher.minPurchase)}</p>
+                                            )}
                                         </div>
-                                        <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
-                                            Hemat {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : formatCurrency(voucher.discountValue)}
-                                        </span>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
+                                                {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : formatCurrency(voucher.discountValue)}
+                                            </span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500 text-center py-4">Tidak ada voucher tersedia.</p>
+                            <div className="text-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                <p className="text-sm text-gray-500">Belum ada voucher yang diklaim.</p>
+                                <Link href="/vouchers" className="text-xs font-bold text-red-600 hover:underline mt-1 inline-block">
+                                    Cari di Voucher Center
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
         </div>
       )}
+
     </div>
   );
 }
@@ -796,7 +971,10 @@ export default function OrderSummaryPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+          <p className="text-sm text-gray-500">Memuat halaman...</p>
+        </div>
       </div>
     }>
       <OrderSummaryContent />
