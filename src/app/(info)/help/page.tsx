@@ -1,196 +1,258 @@
-// src/app/help/page.tsx
+// src/app/(info)/help/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
   Search, ChevronRight, ChevronDown, 
   User, ShoppingBag, CreditCard, Shield, 
-  MessageCircle, Mail, Phone, ExternalLink 
+  MessageCircle, Mail, Phone, FileText, 
+  TicketPercent, Wrench, AlertTriangle, ArrowLeft
 } from 'lucide-react';
 
-// --- MOCK DATA (Lengkap & Sesuai Konteks Posko) ---
+// --- DATA: COMPREHENSIVE KNOWLEDGE BASE ---
+// Disusun berdasarkan use-case nyata aplikasi jasa on-demand
+
 const CATEGORIES = [
-  { id: 'account', label: 'Akun & Keamanan', icon: <User className="w-4 h-4" />, desc: 'Login, profil, password' },
-  { id: 'orders', label: 'Pesanan & Layanan', icon: <ShoppingBag className="w-4 h-4" />, desc: 'Status, pembatalan, teknisi' },
-  { id: 'payment', label: 'Pembayaran', icon: <CreditCard className="w-4 h-4" />, desc: 'Refund, e-wallet, invoice' },
-  { id: 'trust', label: 'Keamanan & Garansi', icon: <Shield className="w-4 h-4" />, desc: 'Garansi servis, report' },
+  { id: 'common', label: 'Topik Populer', icon: <FileText className="w-3.5 h-3.5" />, desc: 'Paling sering ditanyakan' },
+  { id: 'account', label: 'Akun & Keamanan', icon: <User className="w-3.5 h-3.5" />, desc: 'Login, OTP, Alamat' },
+  { id: 'orders', label: 'Pesanan & Layanan', icon: <ShoppingBag className="w-3.5 h-3.5" />, desc: 'Booking, Reschedule' },
+  { id: 'payment', label: 'Pembayaran', icon: <CreditCard className="w-3.5 h-3.5" />, desc: 'Refund, Invoice' },
+  { id: 'promo', label: 'Voucher & Promo', icon: <TicketPercent className="w-3.5 h-3.5" />, desc: 'Diskon, Referral' },
+  { id: 'warranty', label: 'Garansi & Komplain', icon: <Shield className="w-3.5 h-3.5" />, desc: 'Klaim servis, Laporan' },
+  { id: 'partner', label: 'Mitra & Teknisi', icon: <Wrench className="w-3.5 h-3.5" />, desc: 'Etika, Pendaftaran' },
 ];
 
-const FAQS = {
+const KNOWLEDGE_BASE = {
+  common: [
+    { q: "Bagaimana cara membatalkan pesanan?", a: "Pesanan dapat dibatalkan gratis jika status masih 'Menunggu Konfirmasi'. Jika mitra sudah dalam perjalanan, akan dikenakan biaya kompensasi perjalanan sebesar Rp15.000." },
+    { q: "Berapa lama garansi servis di Posko?", a: "Seluruh layanan perbaikan kami dilindungi Garansi 14 Hari. Jika masalah yang sama muncul kembali dalam periode tersebut, kami akan memperbaikinya ulang secara GRATIS." },
+    { q: "Apakah harga di aplikasi sudah final?", a: "Harga di aplikasi adalah estimasi awal. Jika teknisi menemukan kerusakan tambahan saat pengecekan, mereka akan menginput biaya tambahan di aplikasi yang harus Anda setujui terlebih dahulu sebelum pengerjaan lanjut." },
+  ],
   account: [
-    { q: "Bagaimana cara mengubah alamat tersimpan?", a: "Masuk ke menu Profil > Alamat Saya. Anda bisa menambah alamat baru atau mengedit alamat yang sudah ada. Pastikan titik peta sesuai agar teknisi tidak nyasar." },
-    { q: "Saya lupa kata sandi, bagaimana resetnya?", a: "Di halaman Login, klik 'Lupa Password'. Kami akan mengirimkan tautan reset ke email yang terdaftar. Link berlaku selama 15 menit demi keamanan." },
-    { q: "Apakah data saya aman di Posko?", a: "Sangat aman. Kami menggunakan enkripsi standar industri untuk melindungi data pribadi dan transaksi Anda." }
+    { q: "Saya tidak menerima kode OTP", a: "Pastikan nomor HP aktif dan memiliki sinyal. Jika menggunakan WhatsApp, cek koneksi internet. Tunggu 60 detik untuk kirim ulang. Jangan berikan kode OTP kepada siapa pun, termasuk pihak Posko." },
+    { q: "Cara mengubah alamat atau titik peta", a: "Masuk ke menu Profil > Alamat Saya. Anda bisa mengedit alamat yang ada. Pastikan pin point peta akurat untuk memudahkan mitra menemukan lokasi Anda." },
+    { q: "Bagaimana cara menghapus akun?", a: "Permintaan hapus akun dapat dilakukan via menu Pengaturan > Privasi > Hapus Akun. Data akan dihapus permanen dalam 30 hari sesuai kebijakan privasi." },
   ],
   orders: [
-    { q: "Bagaimana jika teknisi tidak datang tepat waktu?", a: "Mitra kami memiliki toleransi keterlambatan 15 menit. Jika lebih, gunakan fitur Chat di aplikasi untuk menghubungi mitra atau hubungi CS kami untuk penggantian mitra prioritas." },
-    { q: "Cara membatalkan pesanan?", a: "Pesanan bisa dibatalkan gratis jika status masih 'Menunggu Konfirmasi'. Jika teknisi sudah jalan, akan dikenakan biaya pembatalan Rp15.000 untuk ganti rugi transport." },
-    { q: "Apakah saya bisa request teknisi wanita?", a: "Untuk layanan tertentu (seperti Make-up atau Cleaning), Anda bisa memberikan catatan saat order. Namun, ini tergantung ketersediaan mitra di area Anda." }
+    { q: "Bisakah saya mengubah jadwal (Reschedule)?", a: "Ya, reschedule bisa dilakukan maksimal 2 jam sebelum jadwal layanan melalui halaman Detail Pesanan. Jika kurang dari 2 jam, silakan hubungi Customer Service." },
+    { q: "Teknisi belum datang melewati jam booking", a: "Mitra memiliki toleransi keterlambatan 15 menit karena kondisi lalu lintas. Anda bisa melacak lokasi mitra atau chat langsung via aplikasi. Jika tidak ada kabar, hubungi CS untuk penggantian mitra prioritas." },
+    { q: "Apakah saya perlu menyediakan alat?", a: "Untuk layanan standar (seperti AC, Cleaning), mitra membawa peralatan sendiri. Namun untuk sparepart khusus (misal: freon, kabel tambahan), mungkin dikenakan biaya tambahan jika tidak Anda sediakan." },
   ],
   payment: [
-    { q: "Metode pembayaran apa saja yang tersedia?", a: "Kami menerima Transfer Bank (VA), E-Wallet (GoPay, OVO, ShopeePay), dan Kartu Kredit. Pembayaran Tunai (COD) hanya tersedia untuk layanan tertentu." },
-    { q: "Kapan dana refund akan masuk?", a: "Refund ke E-Wallet instan (1x24 jam). Untuk Kartu Kredit/Debit maksimal 7-14 hari kerja tergantung bank penerbit." }
+    { q: "Metode pembayaran apa saja yang tersedia?", a: "Kami menerima Transfer Virtual Account (BCA, Mandiri, BRI, BNI), E-Wallet (GoPay, OVO, ShopeePay), Kartu Kredit/Debit, dan PayLater." },
+    { q: "Apakah bisa bayar tunai (COD)?", a: "Pembayaran tunai langsung ke mitra tersedia untuk layanan tertentu di bawah Rp500.000. Untuk transaksi besar, wajib menggunakan pembayaran non-tunai demi keamanan." },
+    { q: "Kapan dana refund masuk?", a: "Refund ke Saldo/E-Wallet diproses instan (maks 1x24 jam). Refund ke Kartu Kredit/Debit membutuhkan waktu 7-14 hari kerja tergantung bank penerbit." },
+    { q: "Saya ditagih biaya parkir oleh teknisi?", a: "Biaya parkir di lokasi pelanggan ditanggung oleh pelanggan jika ada. Biaya tol atau bensin teknisi sudah termasuk dalam biaya layanan aplikasi." },
   ],
-  trust: [
-    { q: "Apakah layanan Posko bergaransi?", a: "Ya! Semua layanan perbaikan memiliki garansi servis 14 hari. Jika masalah yang sama muncul kembali, kami perbaiki gratis." },
-    { q: "Bagaimana cara klaim garansi?", a: "Buka menu Pesanan > Riwayat > Pilih pesanan terkait > Klik 'Ajukan Komplain/Garansi'. Lampirkan foto bukti pengerjaan." }
+  promo: [
+    { q: "Voucher tidak bisa digunakan", a: "Cek Syarat & Ketentuan voucher. Beberapa voucher hanya berlaku untuk layanan spesifik, metode pembayaran tertentu, atau memiliki minimum transaksi." },
+    { q: "Apakah bisa menggabungkan promo?", a: "Umumnya hanya 1 kode promo yang bisa digunakan per transaksi, namun Anda tetap bisa mendapatkan Posko Poin dari transaksi tersebut." },
+  ],
+  warranty: [
+    { q: "Cara klaim garansi servis", a: "Buka menu Pesanan > Riwayat > Pilih pesanan terkait > Klik tombol 'Klaim Garansi'. Lampirkan foto/video bukti masalah yang muncul kembali. Tim kami akan memverifikasi dalam 1x24 jam." },
+    { q: "Apa saja yang tidak tercover garansi?", a: "Garansi tidak mencakup kerusakan akibat bencana alam, kesalahan penggunaan oleh pelanggan, atau jika unit telah diotak-atik oleh pihak lain selain mitra Posko selama masa garansi." },
+    { q: "Bagaimana melaporkan mitra yang tidak sopan?", a: "Keamanan Anda prioritas kami. Laporkan segera via tombol 'Lapor Masalah' di pesanan atau hubungi Tombol Darurat (SOS) jika mendesak. Kami akan menindak tegas mitra yang melanggar kode etik." },
+  ],
+  partner: [
+    { q: "Siapa itu mitra Posko?", a: "Mitra Posko adalah tenaga ahli profesional yang telah melewati proses seleksi ketat: verifikasi KTP/SKCK, tes keterampilan teknis, dan pelatihan standar pelayanan (SOP)." },
+    { q: "Apakah teknisi sudah divaksin?", a: "Ya, 100% mitra aktif kami wajib sudah vaksinasi COVID-19 dosis lengkap dan mematuhi protokol kesehatan saat bekerja di rumah Anda." },
   ]
 };
 
 export default function HelpCenterPage() {
-  const [activeCategory, setActiveCategory] = useState('orders');
+  const [activeCategory, setActiveCategory] = useState('common');
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter logic (bisa dikembangkan lebih lanjut)
-  const activeFaqs = FAQS[activeCategory as keyof typeof FAQS] || [];
+  // Filter Logic: Gabungkan semua data jika sedang searching
+  const filteredData = useMemo(() => {
+    if (!searchQuery) return KNOWLEDGE_BASE[activeCategory as keyof typeof KNOWLEDGE_BASE] || [];
+    
+    // Flatten semua data untuk pencarian
+    const allFaqs = Object.values(KNOWLEDGE_BASE).flat();
+    return allFaqs.filter(item => 
+      item.q.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      item.a.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, activeCategory]);
 
   return (
-    <main className="min-h-screen bg-white font-sans text-gray-800">
+    <main className="min-h-screen bg-white font-sans text-gray-800 pb-20 lg:pb-10">
       
-      {/* 1. COMPACT HEADER & SEARCH (High Density) */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 lg:px-6 py-3 flex items-center gap-4">
-            <Link href="/" className="shrink-0 p-1 hover:bg-gray-50 rounded-full transition-colors">
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
-            </Link>
-            <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* 1. COMPACT HEADER (Sticky) */}
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-40 supports-[backdrop-filter]:bg-white/80 supports-[backdrop-filter]:backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 py-3">
+            <div className="flex items-center gap-3 mb-3 lg:mb-0">
+                <Link href="/profile" className="lg:hidden p-1.5 -ml-2 hover:bg-gray-50 rounded-full text-gray-600">
+                    <ArrowLeft className="w-5 h-5" />
+                </Link>
+                <h1 className="text-base lg:text-lg font-bold text-gray-900 tracking-tight flex-1">Pusat Bantuan</h1>
+                <div className="hidden lg:flex items-center gap-2 text-xs font-medium text-gray-500">
+                    <span>Butuh bantuan mendesak?</span>
+                    <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded">021-555-000</span>
+                </div>
+            </div>
+
+            {/* Search Bar - Full width on mobile, sleek on desktop */}
+            <div className="relative group">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-red-500 transition-colors" />
                 <input 
                     type="text" 
-                    placeholder="Cari kendala (misal: refund, teknisi)" 
-                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all placeholder:text-gray-400"
+                    placeholder="Cari kendala (misal: refund, teknisi telat, garansi)" 
+                    className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:bg-white focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all placeholder:text-gray-400"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
             </div>
-            <div className="hidden lg:block text-sm font-bold text-gray-900">Pusat Bantuan</div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
-        
-        {/* 2. CATEGORY TABS (Scrollable on Mobile, Grid on Desktop) */}
-        {/* Menggunakan grid kecil di mobile (2 kolom) agar efisien secara vertikal */}
-        <section className="mb-8">
-            <h1 className="text-lg lg:text-xl font-bold text-gray-900 mb-4 tracking-tight">Topik Bantuan</h1>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {CATEGORIES.map((cat) => (
-                    <button 
-                        key={cat.id}
-                        onClick={() => setActiveCategory(cat.id)}
-                        className={`
-                            text-left p-3 rounded-xl border transition-all duration-200 relative group
-                            ${activeCategory === cat.id 
-                                ? 'bg-red-50 border-red-200 shadow-sm' 
-                                : 'bg-white border-gray-200 hover:border-red-200 hover:bg-gray-50'
-                            }
-                        `}
-                    >
-                        <div className={`mb-2 w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${activeCategory === cat.id ? 'bg-white text-red-600 shadow-sm' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:text-red-500'}`}>
-                            {cat.icon}
-                        </div>
-                        <h3 className={`text-sm font-bold leading-none mb-1 ${activeCategory === cat.id ? 'text-red-700' : 'text-gray-900'}`}>{cat.label}</h3>
-                        <p className="text-[10px] text-gray-500 leading-tight line-clamp-1">{cat.desc}</p>
-                    </button>
-                ))}
-            </div>
-        </section>
-
-        {/* 3. CONTENT AREA (Split Layout on Desktop) */}
+      <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
         <div className="flex flex-col lg:flex-row gap-8">
             
-            {/* FAQ List (Dense Accordion) */}
-            <div className="flex-1">
-                <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Pertanyaan Populer</h2>
-                    <span className="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">Topik: {CATEGORIES.find(c => c.id === activeCategory)?.label}</span>
+            {/* 2. SIDEBAR CATEGORIES (Desktop: Vertical List, Mobile: Horizontal Scroll) */}
+            <nav className={`
+                ${searchQuery ? 'hidden' : 'block'} 
+                w-full lg:w-64 shrink-0 overflow-x-auto lg:overflow-visible
+                pb-2 lg:pb-0 scrollbar-hide
+            `}>
+                <div className="flex lg:flex-col gap-2 min-w-max lg:min-w-0 lg:sticky lg:top-24">
+                    <div className="hidden lg:block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-3">Kategori Bantuan</div>
+                    {CATEGORIES.map((cat) => (
+                        <button 
+                            key={cat.id}
+                            onClick={() => { setActiveCategory(cat.id); setOpenAccordion(null); }}
+                            className={`
+                                flex items-center gap-3 px-3 py-2 lg:py-2.5 rounded-lg text-left transition-all text-sm
+                                ${activeCategory === cat.id 
+                                    ? 'bg-red-50 text-red-700 font-semibold ring-1 ring-red-100 lg:ring-0' 
+                                    : 'bg-white lg:hover:bg-gray-50 text-gray-600 border border-gray-200 lg:border-transparent'
+                                }
+                            `}
+                        >
+                            <span className={`shrink-0 ${activeCategory === cat.id ? 'text-red-600' : 'text-gray-400'}`}>
+                                {cat.icon}
+                            </span>
+                            <span className="whitespace-nowrap">{cat.label}</span>
+                            {activeCategory === cat.id && <ChevronRight className="w-3.5 h-3.5 ml-auto hidden lg:block" />}
+                        </button>
+                    ))}
                 </div>
+            </nav>
 
+            {/* 3. MAIN CONTENT (FAQ List) */}
+            <div className="flex-1 min-h-[50vh]">
+                {/* Search Result Feedback */}
+                {searchQuery && (
+                    <div className="mb-4 text-sm text-gray-600">
+                        Menampilkan hasil untuk "<span className="font-semibold text-gray-900">{searchQuery}</span>" ({filteredData.length})
+                    </div>
+                )}
+
+                {/* FAQ Items */}
                 <div className="space-y-2">
-                    {activeFaqs.map((item, idx) => {
-                        const isOpen = openAccordion === `${activeCategory}-${idx}`;
-                        return (
-                            <div 
-                                key={idx} 
-                                className={`border rounded-lg overflow-hidden transition-all duration-200 ${isOpen ? 'border-red-200 bg-red-50/10' : 'border-gray-200 bg-white hover:border-gray-300'}`}
-                            >
-                                <button 
-                                    onClick={() => setOpenAccordion(isOpen ? null : `${activeCategory}-${idx}`)}
-                                    className="w-full flex items-center justify-between p-3.5 text-left"
-                                >
-                                    <span className={`text-sm font-medium ${isOpen ? 'text-red-700' : 'text-gray-700'}`}>{item.q}</span>
-                                    {isOpen ? <ChevronDown className="w-4 h-4 text-red-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
-                                </button>
-                                
+                    {filteredData.length > 0 ? (
+                        filteredData.map((item, idx) => {
+                            const isOpen = openAccordion === `faq-${idx}`;
+                            return (
                                 <div 
+                                    key={idx} 
                                     className={`
-                                        overflow-hidden transition-all duration-300 ease-in-out
-                                        ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                                        border rounded-lg bg-white overflow-hidden transition-all duration-200
+                                        ${isOpen ? 'border-red-200 shadow-sm' : 'border-gray-100 hover:border-gray-300'}
                                     `}
                                 >
-                                    <div className="px-3.5 pb-4 pt-0 text-xs lg:text-sm text-gray-600 leading-relaxed border-t border-dashed border-red-100 mt-1">
-                                        <div className="pt-3">{item.a}</div>
+                                    <button 
+                                        onClick={() => setOpenAccordion(isOpen ? null : `faq-${idx}`)}
+                                        className="w-full flex items-start gap-3 p-3 text-left group"
+                                    >
+                                        <div className={`mt-0.5 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-red-500' : 'text-gray-400'}`}>
+                                            <ChevronDown className="w-4 h-4" />
+                                        </div>
+                                        <span className={`text-sm font-medium leading-relaxed ${isOpen ? 'text-red-700' : 'text-gray-800 group-hover:text-gray-900'}`}>
+                                            {item.q}
+                                        </span>
+                                    </button>
+                                    
+                                    <div 
+                                        className={`
+                                            transition-all duration-300 ease-in-out overflow-hidden
+                                            ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                                        `}
+                                    >
+                                        <div className="px-3 pl-10 pb-4 pr-4">
+                                            <div className="text-xs lg:text-[13px] text-gray-600 leading-relaxed bg-gray-50/80 p-3 rounded-lg border border-gray-100/50">
+                                                {item.a}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )
-                    })}
+                            )
+                        })
+                    ) : (
+                        <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                            <Search className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-gray-900">Tidak ditemukan</p>
+                            <p className="text-xs text-gray-500">Coba kata kunci lain atau hubungi CS.</p>
+                        </div>
+                    )}
                 </div>
 
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                    <div className="p-1.5 bg-white rounded-md border border-gray-200 shadow-sm shrink-0">
-                        <ExternalLink className="w-4 h-4 text-gray-600" />
-                    </div>
-                    <div>
-                        <h4 className="text-xs font-bold text-gray-900">Masih butuh bantuan spesifik?</h4>
-                        <p className="text-[11px] text-gray-500 mt-0.5 mb-2">Jika jawaban di atas tidak membantu, ajukan tiket bantuan.</p>
-                        <button className="text-[10px] font-bold text-white bg-gray-900 hover:bg-black px-3 py-1.5 rounded-lg transition-all">
-                            Buat Tiket Bantuan
+                {/* CTA Box (Hanya muncul jika tidak searching atau di bawah list) */}
+                <div className="mt-8 p-4 lg:p-5 rounded-xl border border-gray-100 bg-gradient-to-r from-gray-50 to-white flex items-center justify-between gap-4">
+                   <div>
+                        <h3 className="text-sm font-bold text-gray-900">Jawaban kurang membantu?</h3>
+                        <p className="text-xs text-gray-500 mt-1">Tim support kami siap membantu 24/7.</p>
+                   </div>
+                   <div className="flex gap-2">
+                        <button className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors whitespace-nowrap">
+                            Buat Tiket
                         </button>
-                    </div>
+                   </div>
                 </div>
             </div>
 
-            {/* Contact Sidebar (Sticky on Desktop, Bottom on Mobile) */}
-            <div className="lg:w-72 shrink-0">
-                <div className="sticky top-24 space-y-4">
-                    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider hidden lg:block">Hubungi Kami</h2>
+            {/* 4. CONTACT SIDEBAR (Desktop: Right Sticky, Mobile: Bottom Section) */}
+            <div className="lg:w-64 shrink-0">
+                <div className="lg:sticky lg:top-24 space-y-3">
+                    <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider hidden lg:block mb-3">Kontak Langsung</h2>
                     
-                    {/* Live Chat Card */}
-                    <div className="p-4 rounded-xl border border-red-100 bg-gradient-to-br from-red-50 to-white shadow-sm">
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
-                                <MessageCircle className="w-4 h-4" />
+                    {/* Live Chat Card - High Emphasis */}
+                    <div className="p-4 rounded-xl bg-red-600 text-white shadow-lg shadow-red-200 lg:shadow-none">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                                <MessageCircle className="w-4 h-4 text-white" />
                             </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-gray-900">Live Chat</h3>
-                                <p className="text-[10px] text-red-600 font-medium animate-pulse">● Online (08:00 - 21:00)</p>
-                            </div>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-white/20 text-white border border-white/10">
+                                ONLINE
+                            </span>
                         </div>
-                        <p className="text-[11px] text-gray-500 mb-3">Respon tercepat. Bicara langsung dengan agen CS kami.</p>
-                        <button className="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm">
-                            Mulai Chat
+                        <h3 className="text-sm font-bold mb-1">Live Chat Support</h3>
+                        <p className="text-[11px] text-red-100 leading-snug mb-3">
+                            Bicara langsung dengan agen CS kami untuk solusi tercepat.
+                        </p>
+                        <button className="w-full py-2 bg-white text-red-600 text-xs font-bold rounded-lg shadow-sm hover:bg-red-50 transition-colors">
+                            Mulai Chat Sekarang
                         </button>
                     </div>
 
-                    {/* Secondary Contacts Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <a href="mailto:support@posko.id" className="p-3 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all group text-center flex flex-col items-center gap-2">
-                            <Mail className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors" />
-                            <span className="text-xs font-medium text-gray-600">Email</span>
+                    {/* Secondary Contacts */}
+                    <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
+                        <a href="mailto:support@posko.id" className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all bg-white">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <div className="flex flex-col">
+                                <span className="text-xs font-semibold text-gray-900">Email</span>
+                                <span className="text-[10px] text-gray-500">support@posko.id</span>
+                            </div>
                         </a>
-                        <a href="tel:+6221555555" className="p-3 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all group text-center flex flex-col items-center gap-2">
-                            <Phone className="w-5 h-5 text-gray-400 group-hover:text-gray-900 transition-colors" />
-                            <span className="text-xs font-medium text-gray-600">Call Center</span>
+                        <a href="#" className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all bg-white">
+                            <AlertTriangle className="w-4 h-4 text-gray-400" />
+                            <div className="flex flex-col">
+                                <span className="text-xs font-semibold text-gray-900">Lapor Pelanggaran</span>
+                                <span className="text-[10px] text-gray-500">Privasi & Etika</span>
+                            </div>
                         </a>
-                    </div>
-
-                    {/* Help Tips */}
-                    <div className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-[10px] text-blue-800 leading-tight">
-                        <strong>Tips:</strong> Sertakan nomor Order ID (contoh: ORD-123) saat menghubungi CS agar penanganan lebih cepat.
                     </div>
                 </div>
             </div>
