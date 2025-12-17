@@ -18,8 +18,8 @@ import { useRouter } from 'next/navigation';
 // --- API & TYPES ---
 import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
-import { fetchServices, fetchCategories } from '@/features/services/api'; // [UPDATE] Import fetchCategories
-import { Service, Category } from '@/features/services/types'; // [UPDATE] Import Category
+import { fetchServices, fetchCategories } from '@/features/services/api'; 
+import { Service, Category } from '@/features/services/types'; 
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
 import { useCart } from '@/features/cart/useCart'; 
@@ -64,9 +64,9 @@ export default function HomePage() {
   
   // Data State
   const [services, setServices] = useState<Service[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]); // [BARU] State Categories
+  const [categories, setCategories] = useState<Category[]>([]); 
   const [isLoadingServices, setIsLoadingServices] = useState(true);
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true); // [BARU] Loading state
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true); 
   const [promos, setPromos] = useState<Voucher[]>([]);
   const [isLoadingPromos, setIsLoadingPromos] = useState(true);
   
@@ -78,15 +78,15 @@ export default function HomePage() {
   const isProviderMode = userProfile?.activeRole === 'provider';
   const hasProviderRole = userProfile?.roles.includes('provider');
 
-  // Fetch Categories [BARU]
+  // Fetch Categories
   useEffect(() => {
     fetchCategories()
-      .then(res => setCategories(res.data || [])) // Response structure { status, data }
+      .then(res => setCategories(res.data || [])) 
       .catch(err => console.error("Gagal memuat kategori:", err))
       .finally(() => setIsLoadingCategories(false));
   }, []);
 
-  // Fetch Services (Hanya sebagai data tambahan jika diperlukan, tidak lagi untuk generate kategori)
+  // Fetch Services 
   useEffect(() => {
     fetchServices()
       .then(res => setServices(res.data || []))
@@ -286,38 +286,153 @@ export default function HomePage() {
                     {isProfileOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
-                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
-                                {/* Profile Dropdown Content */}
-                                <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
+                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn ring-1 ring-black/5">
+                                {/* Profile Dropdown Content - UPDATED to match Profile Page */}
+                                
+                                {/* Header Info */}
+                                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
                                       <Image 
                                         src={profileAvatar} 
                                         alt="Avatar" 
                                         fill 
                                         className="object-cover" 
-                                        sizes="36px"
+                                        sizes="40px"
                                       />
                                     </div>
-                                    <div className="min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p><p className="text-[10px] text-gray-500 truncate">{profileEmail}</p><span className="inline-block mt-1 px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded uppercase tracking-wider border border-red-100">{profileBadge}</span></div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p>
+                                      <p className="text-[10px] text-gray-500 truncate">{profileEmail}</p>
+                                      <span className="inline-block mt-1 px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded uppercase tracking-wider border border-red-100">{profileBadge}</span>
+                                    </div>
                                 </div>
-                                <div className="p-1.5 space-y-0.5">
-                                    <Link href="/orders" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
-                                        <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center text-red-600 group-hover:bg-red-100 transition-colors"><OrderIcon className="w-3.5 h-3.5"/></div><span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{t('auth.myOrders')}</span></div>
-                                    </Link>
-                                    <button onClick={handleSwitchModeDesktop} disabled={switching} className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group disabled:opacity-50">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${hasProviderRole ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' : 'bg-green-50 text-green-600 group-hover:bg-green-100'}`}>
-                                                {hasProviderRole ? <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>}
+
+                                <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
+                                    
+                                    {/* SECTION 1: AKTIVITAS */}
+                                    <div className="px-2 pt-3 pb-1">
+                                        <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Aktivitas Saya</h3>
+                                        
+                                        <Link href="/profile/vouchers" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-purple-50 text-purple-600 group-hover:bg-purple-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Voucher Saya</span>
                                             </div>
-                                            <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{switching ? '...' : hasProviderRole ? (isProviderMode ? t('auth.modeCustomer') : t('auth.modePartner')) : t('auth.bePartner')}</span>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+
+                                        <Link href="/orders" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-red-50 text-red-600 group-hover:bg-red-100 transition-colors">
+                                                    <OrderIcon className="w-3.5 h-3.5"/>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{t('auth.myOrders')}</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+                                    </div>
+                                    
+                                    <div className="h-px bg-gray-50 mx-4"></div>
+
+                                    {/* SECTION 2: AKUN */}
+                                    <div className="px-2 py-2">
+                                        <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Akun Saya</h3>
+                                        
+                                        <Link href="/profile/edit" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 group-hover:bg-blue-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Edit Profil</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+
+                                        <Link href="/profile/address" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-orange-50 text-orange-600 group-hover:bg-orange-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Alamat Tersimpan</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+
+                                        <Link href="/profile/security" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-50 text-gray-600 group-hover:bg-gray-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Keamanan Akun</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+                                    </div>
+
+                                    <div className="h-px bg-gray-50 mx-4"></div>
+
+                                    {/* SECTION 3: MITRA */}
+                                    <div className="px-2 py-2">
+                                        <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Area Mitra</h3>
+                                        <button onClick={handleSwitchModeDesktop} disabled={switching} className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group disabled:opacity-50 text-left">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${hasProviderRole ? 'bg-green-50 text-green-600 group-hover:bg-green-100' : 'bg-teal-50 text-teal-600 group-hover:bg-teal-100'}`}>
+                                                    {hasProviderRole ? (
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                                    ) : (
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">
+                                                        {switching ? '...' : hasProviderRole ? (isProviderMode ? t('auth.modeCustomer') : t('auth.modePartner')) : t('auth.bePartner')}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-400">
+                                                        {hasProviderRole ? (isProviderMode ? "Kembali ke mode pengguna" : "Kelola pesanan Anda") : "Mulai tawarkan jasa Anda"}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <div className="h-px bg-gray-50 mx-4"></div>
+
+                                    {/* SECTION 4: LAINNYA */}
+                                    <div className="px-2 pb-2 pt-2">
+                                        <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Lainnya</h3>
+                                        
+                                        <Link href="/help" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Pusat Bantuan</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+
+                                        <Link href="/terms" className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-50 text-gray-600 group-hover:bg-gray-100 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                </div>
+                                                <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Syarat & Ketentuan</span>
+                                            </div>
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                        </Link>
+
+                                        <div className="mt-2 pt-2 border-t border-gray-50">
+                                            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                                {t('auth.logout')}
+                                            </button>
                                         </div>
-                                    </button>
-                                    <div className="h-px bg-gray-100 my-1 mx-2"></div>
-                                    <Link href="/profile" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
-                                        <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 group-hover:bg-gray-100 transition-colors"><UserIcon /></div><span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{t('auth.settings')}</span></div>
-                                    </Link>
+                                    </div>
+
                                 </div>
-                                <div className="p-2 bg-gray-50/50 border-t border-gray-100"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">{t('auth.logout')}</button></div>
                             </div>
                         </>
                     )}
