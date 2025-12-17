@@ -518,7 +518,7 @@ function OrderSummaryContent() {
           phone: customerContact.phone.trim(),
           alternatePhone: showAlternatePhone ? (customerContact.alternatePhone?.trim() || '') : ''
         },
-      },
+      
         orderNote: '',
         propertyDetails: propertyDetails,
         scheduledTimeSlot: {
