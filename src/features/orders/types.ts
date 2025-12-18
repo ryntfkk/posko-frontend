@@ -65,9 +65,9 @@ export interface CreateOrderPayload {
   totalAmount: number;
   items: OrderItemPayload[];
   scheduledAt: string;
-  shippingAddress: Address; 
-  location: { 
-    type: 'Point', 
+  shippingAddress: Address;
+  location: {
+    type: 'Point',
     coordinates: number[];
   };
   customerContact: CustomerContact;
@@ -114,17 +114,18 @@ export interface PopulatedUser {
 }
 
 // ============ ORDER STATUS ============
-export type OrderStatus = 
-  | 'pending' 
-  | 'paid' 
-  | 'searching' 
-  | 'accepted' 
-  | 'on_the_way' 
-  | 'working' 
-  | 'waiting_approval' 
-  | 'completed' 
-  | 'cancelled' 
-  | 'failed';
+export type OrderStatus =
+  | 'pending'
+  | 'paid'
+  | 'searching'
+  | 'accepted'
+  | 'on_the_way'
+  | 'working'
+  | 'waiting_approval'
+  | 'completed'
+  | 'cancelled'
+  | 'failed'
+  | 'disputed';
 
 // ============ ORDER INTERFACE (FULL) ============
 export interface Order {
@@ -133,21 +134,21 @@ export interface Order {
   userId: string | PopulatedUser;
   providerId?: string | PopulatedProvider | null;
   items: PopulatedOrderItem[];
-  
+
   totalAmount: number;
   adminFee?: number;
   discountAmount?: number;
-  
+
   status: OrderStatus;
   orderType: 'direct' | 'basic';
   scheduledAt?: string;
-  
+
   shippingAddress?: Address;
   location?: {
     type: 'Point';
     coordinates: number[];
   };
-  
+
   customerContact?: CustomerContact;
   orderNote?: string;
   propertyDetails?: PropertyDetails;
@@ -156,14 +157,14 @@ export interface Order {
 
   additionalFees?: AdditionalFee[];
   completionEvidence?: Attachment[];
-  
+
   // [BARU] Field untuk Auto-Complete
-  waitingApprovalAt?: string; 
+  waitingApprovalAt?: string;
 
   // [BARU] Tambahan Field untuk Midtrans & Expiry
   snapToken?: string;
   snapExpiryTime?: string; // Menyimpan waktu kadaluarsa dari backend
-  
+
   createdAt: string;
   updatedAt: string;
 }
@@ -178,5 +179,5 @@ export interface OrderListResponse {
   messageKey?: string;
   message?: string;
   data: Order[];
-  meta?: PaginationMeta; 
+  meta?: PaginationMeta;
 }
