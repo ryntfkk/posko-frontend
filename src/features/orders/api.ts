@@ -10,7 +10,7 @@ export const createOrder = (data: CreateOrderPayload) => {
   formData.append('providerId', data.providerId || '');
   formData.append('orderType', data.orderType);
   formData.append('totalAmount', data.totalAmount.toString());
-  
+
   // [FIX] Append Admin Fee & Discount agar Backend menyimpan data keuangan yang akurat
   if (data.adminFee) formData.append('adminFee', data.adminFee.toString());
   if (data.discountAmount) formData.append('discountAmount', data.discountAmount.toString());
@@ -42,8 +42,12 @@ export const createOrder = (data: CreateOrderPayload) => {
 };
 
 // List Orders dengan Pagination
-export const listOrders = (view: 'customer' | 'provider' = 'customer', page = 1, limit = 10) => {
-  return api.get(`/orders?view=${view}&page=${page}&limit=${limit}`);
+export const listOrders = (view: 'customer' | 'provider' = 'customer', page = 1, limit = 10, search?: string) => {
+  let url = `/orders?view=${view}&page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  return api.get(url);
 };
 
 // Incoming Orders (Provider)
@@ -80,7 +84,7 @@ export const cancelOrder = (orderId: string, reason: string) => {
 export const disputeOrder = (orderId: string, reason: string, files?: File[]) => {
   const formData = new FormData();
   formData.append('reason', reason);
-  
+
   if (files && files.length > 0) {
     files.forEach((file) => {
       formData.append('evidence', file);

@@ -22,6 +22,18 @@ const formatCurrency = (amount: number) => {
 export default function OrdersPage() {
   const router = useRouter();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
+
+  const handleSearch = () => {
+    setActiveSearch(searchQuery);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   const {
     data,
@@ -32,9 +44,9 @@ export default function OrdersPage() {
     isFetchingNextPage,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['orders', 'customer'],
+    queryKey: ['orders', 'customer', activeSearch],
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await listOrders('customer', pageParam as number, 10);
+      const res = await listOrders('customer', pageParam as number, 10, activeSearch);
       return res;
     },
     getNextPageParam: (lastPage: any) => {
@@ -147,8 +159,33 @@ export default function OrdersPage() {
         {/* [LAYOUT CHANGE] Single Column on Mobile, Split View on Desktop */}
         <div className="flex flex-col lg:flex-row gap-6 items-start h-full">
 
-          {/* LEFT PANEL: Order List */}
+          {/* LEFT PANEL: Order List & Search */}
           <div className="w-full lg:w-[350px] shrink-0 space-y-4">
+
+            {/* SEARCH BAR (Sidebar) */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  className="block w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all shadow-sm text-xs"
+                  placeholder="Cari order, layanan, mitra..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors active:scale-95"
+              >
+                Cari
+              </button>
+            </div>
 
             {orders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50">
@@ -157,11 +194,30 @@ export default function OrdersPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
-                <h2 className="text-sm font-bold text-gray-900 mb-1">Belum Ada Pesanan</h2>
-                <p className="text-xs text-gray-500 mb-5 max-w-[200px]">Semua riwayat transaksi layanan Anda akan muncul di sini.</p>
-                <Link href="/" className="px-5 py-2.5 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 transition-all shadow-red-100 shadow-lg active:scale-95">
-                  Pesan Layanan
-                </Link>
+                <h2 className="text-sm font-bold text-gray-900 mb-1">
+                  {activeSearch ? 'Tidak Ditemukan' : 'Belum Ada Pesanan'}
+                </h2>
+                <p className="text-xs text-gray-500 mb-5 max-w-[200px]">
+                  {activeSearch
+                    ? `Tidak ada pesanan yang cocok dengan pencarian "${activeSearch}"`
+                    : 'Semua riwayat transaksi layanan Anda akan muncul di sini.'}
+                </p>
+                {!activeSearch && (
+                  <Link href="/" className="px-5 py-2.5 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 transition-all shadow-red-100 shadow-lg active:scale-95">
+                    Pesan Layanan
+                  </Link>
+                )}
+                {activeSearch && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setActiveSearch('');
+                    }}
+                    className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+                  >
+                    Hapus Pencarian
+                  </button>
+                )}
               </div>
             ) : (
               <>
@@ -296,7 +352,7 @@ export default function OrdersPage() {
           </div>
 
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
