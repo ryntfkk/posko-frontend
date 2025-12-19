@@ -150,10 +150,10 @@ export default function TechnicianSection({ userLocation, addressLabel }: Techni
   const getSourceLabel = () => {
     if (locationSource === 'prop') {
       return addressLabel
-        ? `📍 Berdasarkan Alamat Tersimpan: ${addressLabel}`
-        : '📍 Berdasarkan Alamat Tersimpan';
+        ? ` ${addressLabel}`
+        : ' Berdasarkan Alamat Tersimpan';
     }
-    if (locationSource === 'gps') return '📍 Berdasarkan Lokasi Saat Ini (GPS)';
+    if (locationSource === 'gps') return 'Berdasarkan Lokasi GPS Saat Ini ';
     return null;
   };
 
