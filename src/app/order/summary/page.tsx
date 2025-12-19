@@ -792,6 +792,30 @@ function OrderSummaryContent() {
           </div>
         </section>
 
+        {/* BAGIAN: PERSYARATAN LAYANAN (JIKA ADA) */}
+        {activeCartItems.some(item => item.requirements && item.requirements.length > 0) && (
+          <section className="bg-yellow-50 p-5 rounded-2xl border border-yellow-100 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">⚠️</span>
+              <h2 className="text-sm font-bold text-yellow-800">Persyaratan Pelanggan</h2>
+            </div>
+            <div className="space-y-4">
+              {activeCartItems.map((item) => (
+                item.requirements && item.requirements.length > 0 && (
+                  <div key={`req-${item.id}`} className="space-y-1">
+                    <p className="text-xs font-bold text-gray-800">{item.serviceName}</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      {item.requirements.map((req, idx) => (
+                        <li key={idx} className="text-xs text-gray-700">{req}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* BAGIAN 3: KONTAK PENERIMA */}
         <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center gap-2 mb-2">

@@ -13,6 +13,7 @@ export interface CartItem {
     totalPrice: number;
     providerId?: string;
     providerName?: string;
+    requirements?: string[];
 }
 
 const CART_KEY = 'posko_cart';
@@ -25,7 +26,7 @@ export const useCart = () => {
     // [HYDRATION FIX] State awal selalu kosong untuk menghindari mismatch Server vs Client
     const [cart, setCart] = useState<CartItem[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
-    
+
     // Ref untuk melacak apakah perubahan state berasal dari event storage (tab lain)
     const isSyncingFromStorage = useRef(false);
 
@@ -66,7 +67,7 @@ export const useCart = () => {
     useEffect(() => {
         // Jangan simpan jika belum inisialisasi atau update berasal dari tab lain
         if (!isInitialized) return;
-        
+
         if (isSyncingFromStorage.current) {
             isSyncingFromStorage.current = false;
             return;
@@ -80,7 +81,7 @@ export const useCart = () => {
     }, [cart, isInitialized]);
 
     // [HELPER] Cek konflik lebih robust (Strict Single Provider Rule)
-    const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
+    const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice' | 'id'>): boolean => {
         if (cart.length === 0) return false;
 
         // Ambil sample item pertama dari cart yang ada
@@ -103,18 +104,18 @@ export const useCart = () => {
     }, [cart]);
 
     // [ACTION] Update atau Tambah Item
-    const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
+    const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice' | 'id'>) => {
         // Validasi konflik sebelum update state (Extra safety)
         // Idealnya UI sudah memanggil checkConflict sebelumnya
-        
+
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
-        
+
         setCart(prevCart => {
             // Jika cart kosong, langsung tambah
             if (prevCart.length === 0) {
                 const quantity = item.quantity;
                 if (quantity <= 0) return [];
-                
+
                 return [{
                     ...item,
                     id: itemId,
@@ -125,7 +126,7 @@ export const useCart = () => {
             // Logic Replace jika ada konflik provider (Optional: bisa dihandle di UI, 
             // tapi di sini kita asumsikan UI sudah confirm reset)
             // Namun fungsi ini 'upsert', jadi asumsinya item sudah valid untuk masuk.
-            
+
             const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
             const quantity = item.quantity;
             const totalPrice = quantity * item.pricePerUnit;
@@ -164,16 +165,16 @@ export const useCart = () => {
     }, []);
 
     // [ACTION] Reset Cart dan Tambah Item Baru (Replace Cart)
-    const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
+    const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice' | 'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
         const totalPrice = item.quantity * item.pricePerUnit;
 
         const newItem: CartItem = {
-             ...item,
-             id: itemId,
-             totalPrice,
+            ...item,
+            id: itemId,
+            totalPrice,
         };
-        
+
         setCart([newItem]);
     }, []);
 
@@ -217,7 +218,7 @@ export const useCart = () => {
 
     return {
         cart,
-        upsertItem, 
+        upsertItem,
         resetAndAddItem,
         checkConflict,
         removeItem,
