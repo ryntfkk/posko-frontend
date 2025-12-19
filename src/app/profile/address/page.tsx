@@ -25,7 +25,7 @@ export default function AddressPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // State Data Wilayah untuk Dropdown
   const [provinces, setProvinces] = useState<Region[]>([]);
   const [cities, setCities] = useState<Region[]>([]);
@@ -116,24 +116,24 @@ export default function AddressPage() {
     setErrorMessage(null);
 
     if (type === 'province') {
-      setSelectedProvId(id); 
-      setSelectedCityId(''); 
-      setSelectedDistrictId(''); 
+      setSelectedProvId(id);
+      setSelectedCityId('');
+      setSelectedDistrictId('');
       setSelectedVillageId('');
-      setCities([]); 
-      setDistricts([]); 
+      setCities([]);
+      setDistricts([]);
       setVillages([]);
-      
-      setFormData(prev => ({ 
-        ...prev, 
-        province: text, 
-        city: '', 
-        district: '', 
-        village: '', 
-        postalCode: '' 
+
+      setFormData(prev => ({
+        ...prev,
+        province: text,
+        city: '',
+        district: '',
+        village: '',
+        postalCode: ''
       }));
 
-      if(id) {
+      if (id) {
         setWilayahLoading(prev => ({ ...prev, cities: true }));
         fetchRegionChildren(id)
           .then(res => {
@@ -145,23 +145,23 @@ export default function AddressPage() {
           })
           .finally(() => setWilayahLoading(prev => ({ ...prev, cities: false })));
       }
-    } 
+    }
     else if (type === 'city') {
-      setSelectedCityId(id); 
-      setSelectedDistrictId(''); 
+      setSelectedCityId(id);
+      setSelectedDistrictId('');
       setSelectedVillageId('');
-      setDistricts([]); 
+      setDistricts([]);
       setVillages([]);
-      
-      setFormData(prev => ({ 
-        ...prev, 
-        city: text, 
-        district: '', 
-        village: '', 
-        postalCode: '' 
+
+      setFormData(prev => ({
+        ...prev,
+        city: text,
+        district: '',
+        village: '',
+        postalCode: ''
       }));
 
-      if(id) {
+      if (id) {
         setWilayahLoading(prev => ({ ...prev, districts: true }));
         fetchRegionChildren(id)
           .then(res => {
@@ -173,20 +173,20 @@ export default function AddressPage() {
           })
           .finally(() => setWilayahLoading(prev => ({ ...prev, districts: false })));
       }
-    } 
+    }
     else if (type === 'district') {
-      setSelectedDistrictId(id); 
+      setSelectedDistrictId(id);
       setSelectedVillageId('');
       setVillages([]);
-      
-      setFormData(prev => ({ 
-        ...prev, 
-        district: text, 
-        village: '', 
-        postalCode: '' 
+
+      setFormData(prev => ({
+        ...prev,
+        district: text,
+        village: '',
+        postalCode: ''
       }));
 
-      if(id) {
+      if (id) {
         setWilayahLoading(prev => ({ ...prev, villages: true }));
         fetchRegionChildren(id)
           .then(res => {
@@ -201,10 +201,10 @@ export default function AddressPage() {
     }
     else if (type === 'village') {
       setSelectedVillageId(id);
-      
-      setFormData(prev => ({ 
-        ...prev, 
-        village: text, 
+
+      setFormData(prev => ({
+        ...prev,
+        village: text,
         postalCode: '' // Kosongkan untuk user input manual
       }));
     }
@@ -225,7 +225,7 @@ export default function AddressPage() {
 
   // 5.Handler Get Current Location (GPS)
   const handleGetCurrentLocation = () => {
-    if (! navigator.geolocation) {
+    if (!navigator.geolocation) {
       setErrorMessage('Browser Anda tidak mendukung Geolocation.');
       return;
     }
@@ -294,7 +294,7 @@ export default function AddressPage() {
     }
 
     // Validasi Koordinat
-    if (! coordinates.lat || !coordinates.lng) {
+    if (!coordinates.lat || !coordinates.lng) {
       setErrorMessage('Silakan tentukan titik lokasi di peta atau gunakan GPS');
       return false;
     }
@@ -320,7 +320,7 @@ export default function AddressPage() {
     setSuccessMessage(null);
 
     // Validasi form terlebih dahulu
-    if (! validateForm()) {
+    if (!validateForm()) {
       return;
     }
 
@@ -344,9 +344,9 @@ export default function AddressPage() {
       };
 
       await updateProfile(payload);
-      
+
       setSuccessMessage('Alamat berhasil diperbarui!');
-      
+
       // Delay redirect untuk user bisa melihat success message
       setTimeout(() => {
         router.push('/profile');
@@ -382,7 +382,7 @@ export default function AddressPage() {
       </div>
 
       <div className="max-w-xl mx-auto p-4 space-y-5">
-        
+
         {/* Error Alert */}
         {errorMessage && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
@@ -402,7 +402,17 @@ export default function AddressPage() {
             <span>{successMessage}</span>
           </div>
         )}
-        
+
+        {/* Warning 0,0 Coordinate */}
+        {coordinates.lat === 0 && coordinates.lng === 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700 flex items-start gap-2">
+            <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>Koordinat lokasi belum diset (0,0). Mohon geser pin di peta untuk menentukan lokasi yang akurat.</span>
+          </div>
+        )}
+
         {/* SECTION 1: MAPS */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-3">
           <div className="flex justify-between items-end">
@@ -418,7 +428,7 @@ export default function AddressPage() {
           </div>
 
           <div className="w-full h-56 rounded-xl overflow-hidden border border-gray-200 relative z-0">
-            <LocationPicker 
+            <LocationPicker
               onLocationSelect={handleLocationSelect}
               initialLat={coordinates.lat || -6.200000}
               initialLng={coordinates.lng || 106.816666}
@@ -440,15 +450,15 @@ export default function AddressPage() {
 
         {/* SECTION 2: FORM */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
-          
+
           <div>
             <h2 className="text-sm font-bold text-gray-900 mb-3">Detail Alamat</h2>
-            
+
             {/* Provinsi */}
             <div className="mb-3">
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Provinsi *</label>
               <div className="relative">
-                <select 
+                <select
                   className="w-full h-10 px-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none appearance-none"
                   value={selectedProvId}
                   onChange={(e) => handleRegionChange('province', e)}
@@ -468,7 +478,7 @@ export default function AddressPage() {
             <div className="mb-3">
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Kota / Kabupaten *</label>
               <div className="relative">
-                <select 
+                <select
                   className="w-full h-10 px-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                   value={selectedCityId}
                   onChange={(e) => handleRegionChange('city', e)}
@@ -480,7 +490,7 @@ export default function AddressPage() {
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
-                  {wilayahLoading.cities ?  (
+                  {wilayahLoading.cities ? (
                     <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     </svg>
@@ -496,7 +506,7 @@ export default function AddressPage() {
               <div>
                 <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Kecamatan</label>
                 <div className="relative">
-                  <select 
+                  <select
                     className="w-full h-10 px-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                     value={selectedDistrictId}
                     onChange={(e) => handleRegionChange('district', e)}
@@ -521,7 +531,7 @@ export default function AddressPage() {
               <div>
                 <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Kelurahan</label>
                 <div className="relative">
-                  <select 
+                  <select
                     className="w-full h-10 px-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                     value={selectedVillageId}
                     onChange={(e) => handleRegionChange('village', e)}
@@ -533,7 +543,7 @@ export default function AddressPage() {
                     ))}
                   </select>
                   <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-gray-400">
-                    {wilayahLoading.villages ?  (
+                    {wilayahLoading.villages ? (
                       <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       </svg>
@@ -548,7 +558,7 @@ export default function AddressPage() {
             {/* Kode Pos */}
             <div className="mb-3">
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Kode Pos (5 digit)</label>
-              <input 
+              <input
                 type="text"
                 name="postalCode"
                 value={formData.postalCode}
@@ -562,7 +572,7 @@ export default function AddressPage() {
             {/* Detail Jalan */}
             <div>
               <label className="block text-[11px] font-bold text-gray-500 uppercase mb-1.5">Detail Jalan / Patokan *</label>
-              <textarea 
+              <textarea
                 name="detail"
                 value={formData.detail}
                 onChange={handleTextChange}
@@ -575,8 +585,8 @@ export default function AddressPage() {
 
           {/* Tombol Simpan */}
           <div className="pt-2">
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isSaving}
               className={`w-full py-3.5 px-4 rounded-xl font-bold text-white transition-all shadow-md active:scale-95 flex items-center justify-center gap-2
                 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black shadow-gray-200'}

@@ -22,8 +22,6 @@ function useDebounce<T>(value: T, delay: number): T {
 // --- HELPER FUNCTIONS ---
 import { calculateDistance } from '@/features/providers/components/utils';
 
-
-
 // Helper: Format harga ringkas (cth: 50rb, 1.2jt)
 const formatCompactPrice = (price: number) => {
   if (price >= 1000000) {
@@ -34,7 +32,6 @@ const formatCompactPrice = (price: number) => {
   }
   return price.toString();
 };
-
 
 // --- ICONS (Optimized Size) ---
 const Icons = {
@@ -99,6 +96,15 @@ export default function ServiceCategoryPage() {
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
+  // [NEW] Location State
+  interface LocationState {
+    lat: number;
+    lng: number;
+  }
+  const [currentLocation, setCurrentLocation] = useState<LocationState | undefined>(undefined);
+  const [locationSource, setLocationSource] = useState<'prop' | 'gps' | 'none'>('none');
+  const [geoError, setGeoError] = useState<string | null>(null);
+
   // Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'distance' | 'price_asc' | 'price_desc' | 'rating'>('distance');
@@ -153,7 +159,54 @@ export default function ServiceCategoryPage() {
     loadUserProfile();
   }, []);
 
-  // Load Providers
+  // [NEW] Sync Profile Location to Local State
+  useEffect(() => {
+    if (userProfile?.location?.coordinates) {
+      const [lng, lat] = userProfile.location.coordinates;
+      // Coordinates [0, 0] mean no location
+      if (lat !== 0 || lng !== 0) {
+        setCurrentLocation({ lat, lng });
+        setLocationSource('prop');
+      }
+    }
+  }, [userProfile]);
+
+  // [NEW] Handle Manual GPS
+  const handleUseMyLocation = () => {
+    setGeoError(null);
+    if (navigator.geolocation) {
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setLocationSource('gps');
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          let msg = "Gagal mendapatkan lokasi.";
+          if (error.code === 1) msg = "Izin lokasi ditolak. Mohon izinkan akses lokasi di browser Anda.";
+          else if (error.code === 2) msg = "Lokasi tidak tersedia. Pastikan GPS aktif atau coba gunakan WiFi.";
+          else if (error.code === 3) msg = "Waktu permintaan habis. Coba lagi.";
+
+          setGeoError(msg);
+          // alert(msg); // UX Choice: Show inline error instead of alert
+        },
+        options
+      );
+    } else {
+      setGeoError("Browser tidak mendukung geolokasi.");
+    }
+  };
+
+  // Load Providers (Depends on currentLocation now)
   useEffect(() => {
     if (!isProfileLoaded) return;
 
@@ -162,11 +215,13 @@ export default function ServiceCategoryPage() {
 
       setIsLoading(true);
       try {
+        // [UPDATE] Use currentLocation logic
         let lat: number | undefined;
         let lng: number | undefined;
 
-        if (userProfile?.location?.coordinates) {
-          [lng, lat] = userProfile.location.coordinates;
+        if (currentLocation) {
+          lat = currentLocation.lat;
+          lng = currentLocation.lng;
         }
 
         const response = await fetchProviders({
@@ -193,7 +248,7 @@ export default function ServiceCategoryPage() {
     };
 
     loadProviders();
-  }, [categoryParam, debouncedSearch, sortBy, userProfile, isProfileLoaded]);
+  }, [categoryParam, debouncedSearch, sortBy, currentLocation, isProfileLoaded]);
 
   // --- HELPERS ---
   const handleBasicOrder = () => {
@@ -201,15 +256,35 @@ export default function ServiceCategoryPage() {
     router.push(`/checkout?type=basic&category=${encodeURIComponent(categoryQuery)}`);
   };
 
-  const handleOpenProvider = (providerId: string) => {
-    router.push(`/provider/${providerId}`);
-  };
+  const calculateDistanceStr = (prov: Provider) => {
+    let distanceStr = null;
+    if (prov.distance) {
+      distanceStr = (prov.distance / 1000).toFixed(1) + ' km';
+    } else if (currentLocation && prov.userId?.location?.coordinates) {
+      const provLng = prov.userId.location.coordinates[0];
+      const provLat = prov.userId.location.coordinates[1];
+      distanceStr = calculateDistance(currentLocation.lat, currentLocation.lng, provLat, provLng);
+      // calculateDistance returns string "X.X" (km), we add ' km'
+      distanceStr = distanceStr + ' km';
+    }
+    return distanceStr;
+  }
 
   const filterOptions = [
     { value: 'distance', label: 'Terdekat' },
     { value: 'price_asc', label: 'Harga Terendah' },
     { value: 'rating', label: 'Rating Tertinggi' },
   ];
+
+  // Helper Labels
+  const getSourceLabel = () => {
+    if (locationSource === 'prop' && userProfile?.address?.district) {
+      return `Kec. ${userProfile.address.district}`;
+    }
+    if (locationSource === 'prop') return 'Alamat Tersimpan';
+    if (locationSource === 'gps') return 'Lokasi GPS Anda';
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 lg:pb-12 font-sans">
@@ -333,14 +408,41 @@ export default function ServiceCategoryPage() {
           </div>
 
           {/* RESULTS HEADER */}
-          <div className="flex items-end justify-between mb-3">
-            <h1 className="text-sm lg:text-base font-bold text-gray-900">
-              {isLoading ? 'Memuat...' : `${providers.length} Mitra Tersedia`}
-            </h1>
-            {!isLoading && (
-              <span className="text-[10px] lg:text-xs text-gray-500">
-                di sekitar {userProfile?.address?.district ? `Kec. ${userProfile.address.district}` : 'Sekitar Anda'}
-              </span>
+          <div className="flex flex-col gap-2 mb-4">
+            <div className="flex items-end justify-between">
+              <h1 className="text-sm lg:text-base font-bold text-gray-900">
+                {isLoading ? 'Memuat...' : `${providers.length} Mitra Tersedia`}
+              </h1>
+              {!isLoading && currentLocation ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-red-50 text-red-700 border border-red-100 font-medium">
+                  {getSourceLabel()}
+                </span>
+              ) : (
+                !isLoading && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleUseMyLocation}
+                      className="text-[10px] font-bold text-red-600 bg-white border border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors shadow-sm"
+                    >
+                      <Icons.Location />
+                      <span className="hidden lg:inline">Cari Sekitar Saya</span>
+                      <span className="lg:hidden">Lokasi</span>
+                    </button>
+                    <Link
+                      href="/profile/address"
+                      className="text-[10px] font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors"
+                    >
+                      + Alamat
+                    </Link>
+                  </div>
+                )
+              )}
+            </div>
+
+            {!isLoading && !currentLocation && (
+              <p className="text-[10px] lg:text-xs text-gray-500">
+                Menampilkan hasil acak. Aktifkan lokasi atau tambah alamat untuk melihat mitra terdekat.
+              </p>
             )}
           </div>
 
@@ -356,30 +458,59 @@ export default function ServiceCategoryPage() {
               ))}
             </div>
           ) : providers.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
-              <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-2 text-gray-300">
+            // [NEW] RICH EMPTY STATE
+            <div className="bg-gray-50 rounded-xl p-6 lg:p-12 text-center border border-dashed border-gray-200 flex flex-col items-center justify-center gap-3">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-1">
                 <Icons.Search />
               </div>
-              <p className="text-xs font-medium text-gray-900">Tidak ada mitra ditemukan</p>
-              <button onClick={() => { setSearchTerm(''); setSortBy('distance'); }} className="mt-3 text-xs text-red-600 font-bold hover:underline">
-                Reset Filter
-              </button>
+              <div>
+                <p className="text-gray-900 font-bold mb-1">Tidak ada mitra ditemukan</p>
+                <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                  {currentLocation
+                    ? `Belum ada mitra layanan ${categoryDisplayName} di area ini.`
+                    : `Aktifkan lokasi atau tambahkan alamat untuk melihat mitra terdekat.`}
+                </p>
+              </div>
+
+              {!currentLocation && (
+                <div className="flex flex-col sm:flex-row gap-3 mt-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleUseMyLocation}
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-6 rounded-full text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Icons.Location />
+                    Aktifkan Lokasi
+                  </button>
+                  <Link
+                    href="/profile/address"
+                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-bold py-2.5 px-6 rounded-full text-sm transition-all flex items-center justify-center gap-2"
+                  >
+                    + Tambah Alamat
+                  </Link>
+                </div>
+              )}
+
+              {/* Reset Filter Button if Logic Exists (Search/Sort) */}
+              {(searchTerm || sortBy !== 'distance') && (
+                <button
+                  onClick={() => { setSearchTerm(''); setSortBy('distance'); }}
+                  className="mt-2 text-xs text-red-600 font-bold hover:underline"
+                >
+                  Reset Filter & Pencarian
+                </button>
+              )}
+
+              {geoError && (
+                <div className="mt-3 p-2 bg-red-50 text-red-600 text-xs rounded border border-red-100 max-w-sm">
+                  {geoError}
+                </div>
+              )}
             </div>
           ) : (
             // GRID: Mobile 2 Kolom (grid-cols-2), Desktop 5 Kolom (grid-cols-5)
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5">
               {providers.map((prov) => {
-                // --- Logic Jarak (Same as TechnicianSection) ---
-                let distanceStr = null;
-                // Prioritaskan jarak dari backend, jika tidak ada hitung manual client side
-                if (prov.distance) {
-                  distanceStr = (prov.distance / 1000).toFixed(1) + ' km';
-                } else if (userProfile?.location?.coordinates && prov.userId?.location?.coordinates) {
-                  const [userLng, userLat] = userProfile.location.coordinates;
-                  const provLng = prov.userId.location.coordinates[0];
-                  const provLat = prov.userId.location.coordinates[1];
-                  distanceStr = calculateDistance(userLat, userLng, provLat, provLng);
-                }
+                const distanceStr = calculateDistanceStr(prov);
 
                 // --- Helpers Services & Price ---
                 // Sort services to prioritize the current category

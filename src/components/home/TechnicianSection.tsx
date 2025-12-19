@@ -203,9 +203,18 @@ export default function TechnicianSection({ userLocation, addressLabel }: Techni
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
               {getSourceLabel() && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded border ${locationSource === 'prop' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
-                  {getSourceLabel()}
-                </span>
+                locationSource === 'prop' ? (
+                  <Link
+                    href="/profile/address"
+                    className="text-[9px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 transition-colors"
+                  >
+                    {getSourceLabel()}
+                  </Link>
+                ) : (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded border bg-green-50 text-green-600 border-green-100">
+                    {getSourceLabel()}
+                  </span>
+                )
               )}
             </div>
             {!currentLocation ? (

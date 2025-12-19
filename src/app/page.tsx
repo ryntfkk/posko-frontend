@@ -166,7 +166,7 @@ export default function HomePage() {
 
     if (userProfile?.location?.coordinates) {
       const [lng, lat] = userProfile.location.coordinates;
-      if (lat && lng) label += ` (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      if (lat && lng) label += ` (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
     }
 
     return label;
