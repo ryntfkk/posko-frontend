@@ -520,9 +520,9 @@ function OrderSummaryContent() {
       setPromoCodeInput('');
 
       if (eligibleTotal < currentTotalAmount) {
-        alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}.`);
+        alert(`Promo ${code.toUpperCase()} valid! Hemat ${formatCurrency(estimatedDiscount)}.`);
       } else {
-        alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan. Hemat ${formatCurrency(estimatedDiscount)}`);
+        alert(`Promo ${code.toUpperCase()} valid! Hemat ${formatCurrency(estimatedDiscount)}.`);
       }
 
     } catch (error: any) {
