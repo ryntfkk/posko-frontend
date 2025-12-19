@@ -43,13 +43,13 @@ export interface RegisterPayload {
   username: string; // [NEW] Added username
   email: string;
   password?: string;
-  phoneNumber: string;
+  phoneNumber?: string; // Optional
   birthDate?: string; // YYYY-MM-DD
   gender?: string;
   roles?: string[];
   verificationToken: string; // [REQUIRED] Token Email
-  phoneVerificationToken: string; // [NEW] Token WhatsApp
-  address: {
+  phoneVerificationToken?: string; // [OPTIONAL] Token WhatsApp
+  address?: {
     province: string;
     city: string;
     district: string;
@@ -57,7 +57,7 @@ export interface RegisterPayload {
     postalCode: string;
     detail: string;
   };
-  location: {
+  location?: {
     type: string;
     coordinates: number[]; // [longitude, latitude]
   };
