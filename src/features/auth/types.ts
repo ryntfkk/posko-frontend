@@ -15,6 +15,16 @@ export interface User {
   profilePictureUrl?: string;
   balance?: number;
   providerStatus?: string; // [NEW] Status verifikasi provider
+  location?: {
+    type: string;
+    coordinates: number[];
+  };
+  address?: {
+    city?: string;
+    province?: string;
+    district?: string;
+    detail?: string;
+  };
 }
 
 export interface AuthTokens {

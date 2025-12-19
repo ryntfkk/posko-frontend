@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { fetchProviders, FetchProvidersParams } from '@/features/providers/api';
 import { Provider } from '@/features/providers/types';
-import { useLanguage } from '@/context/LanguageContext'; 
+import { useLanguage } from '@/context/LanguageContext';
 
 interface TechnicianSectionProps {
   userLocation?: {
     lat: number;
     lng: number;
   };
+  addressLabel?: string;
 }
 
 // Helper: Menghitung jarak (Haversine Formula) dalam KM
@@ -27,7 +28,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c;
-  return d.toFixed(1); 
+  return d.toFixed(1);
 }
 
 // Helper: Format harga ringkas
@@ -41,22 +42,74 @@ const formatCompactPrice = (price: number) => {
   return price.toString();
 };
 
-export default function TechnicianSection({ userLocation }: TechnicianSectionProps) {
-  const { t } = useLanguage(); 
+export default function TechnicianSection({ userLocation, addressLabel }: TechnicianSectionProps) {
+  const { t } = useLanguage();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // [NEW] Local state for location (prop + manual request)
+  const [currentLocation, setCurrentLocation] = useState(userLocation);
+
+  // [NEW] Indikator Sumber Lokasi
+  const [locationSource, setLocationSource] = useState<'prop' | 'gps' | 'none'>('none');
+  const [geoError, setGeoError] = useState<string | null>(null);
+
+  // Sync prop changes
+  useEffect(() => {
+    if (userLocation) {
+      setCurrentLocation(userLocation);
+      setLocationSource('prop');
+    } else {
+      setLocationSource('none');
+    }
+  }, [userLocation]);
+
+  const handleUseMyLocation = () => {
+    setGeoError(null);
+    if (navigator.geolocation) {
+      // [FIX] Add options for better accuracy & code 2 handling
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setLocationSource('gps');
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          let msg = "Gagal mendapatkan lokasi.";
+          if (error.code === 1) msg = "Izin lokasi ditolak. Mohon izinkan akses lokasi di browser Anda.";
+          else if (error.code === 2) msg = "Lokasi tidak tersedia. Pastikan GPS aktif atau coba gunakan WiFi.";
+          else if (error.code === 3) msg = "Waktu permintaan habis. Coba lagi.";
+
+          setGeoError(msg);
+          alert(msg);
+        },
+        options
+      );
+    } else {
+      alert("Browser tidak mendukung geolokasi.");
+    }
+  };
 
   useEffect(() => {
     const loadProviders = async () => {
       try {
         setIsLoading(true);
         const params: FetchProvidersParams = { limit: 8 };
-        
-        if (userLocation) {
-          params.lat = userLocation.lat;
-          params.lng = userLocation.lng;
+
+        if (currentLocation) {
+          params.lat = currentLocation.lat;
+          params.lng = currentLocation.lng;
         }
-        
+
         const res = await fetchProviders(params);
         setProviders(res.data || []);
       } catch (error) {
@@ -67,7 +120,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
       }
     };
     loadProviders();
-  }, [userLocation]);
+  }, [currentLocation]);
 
   // Loading State
   if (isLoading) {
@@ -82,9 +135,9 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
           <div className="flex gap-3 px-4 lg:px-8 pb-2 overflow-hidden">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="w-32 lg:w-48 shrink-0 flex flex-col gap-2">
-                 <div className="aspect-[4/3] bg-gray-100 rounded-xl animate-pulse" />
-                 <div className="h-3 w-3/4 bg-gray-100 rounded animate-pulse" />
-                 <div className="h-2 w-1/2 bg-gray-100 rounded animate-pulse" />
+                <div className="aspect-[4/3] bg-gray-100 rounded-xl animate-pulse" />
+                <div className="h-3 w-3/4 bg-gray-100 rounded animate-pulse" />
+                <div className="h-2 w-1/2 bg-gray-100 rounded animate-pulse" />
               </div>
             ))}
           </div>
@@ -93,15 +146,49 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
     );
   }
 
-  // Empty State
+  // Get Source Label
+  const getSourceLabel = () => {
+    if (locationSource === 'prop') {
+      return addressLabel
+        ? `📍 Berdasarkan Alamat Tersimpan: ${addressLabel}`
+        : '📍 Berdasarkan Alamat Tersimpan';
+    }
+    if (locationSource === 'gps') return '📍 Berdasarkan Lokasi Saat Ini (GPS)';
+    return null;
+  };
+
+  // Empty State with Location Prompt
   if (providers.length === 0) {
     return (
       <section className="py-4 lg:py-8 bg-white border-t border-gray-50">
-         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <h2 className="text-sm lg:text-lg font-bold text-gray-900 mb-3">{t('home.nearbyTitle')}</h2>
-            <div className="bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-200">
-              <p className="text-gray-400 text-xs">{t('home.noNearby')}</p>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-6 text-center border border-dashed border-gray-200 flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-1">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             </div>
+            <div>
+              <p className="text-gray-500 text-sm font-medium mb-1">Tidak ada mitra ditemukan di sekitar lokasi ini.</p>
+              {!currentLocation && <p className="text-gray-400 text-xs">Aktifkan lokasi atau tambah alamat untuk melihat mitra terdekat.</p>}
+            </div>
+
+            {!currentLocation && (
+              <div className="flex gap-2 mt-2">
+                <button onClick={handleUseMyLocation} className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-full flex items-center gap-2 transition-all shadow-sm">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  Aktifkan Lokasi
+                </button>
+                <Link href="/profile/address" className="text-xs font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 px-4 py-2 rounded-full transition-all">
+                  Tambah Alamat
+                </Link>
+              </div>
+            )}
+
+            {geoError && <p className="text-red-500 text-[10px] mt-2 bg-red-50 px-2 py-1 rounded">{geoError}</p>}
+          </div>
         </div>
       </section>
     );
@@ -111,62 +198,87 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
     <section className="py-4 lg:py-8 bg-white border-t border-gray-50">
       <div className="max-w-7xl mx-auto">
         {/* HEADER */}
-        <div className="flex items-center justify-between mb-3 lg:mb-5 px-4 lg:px-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 lg:mb-5 px-4 lg:px-8 gap-3">
           <div>
-            <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
-            <p className="text-[10px] text-gray-500 hidden lg:block">{t('home.nearbySubtitle')}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
+              {getSourceLabel() && (
+                <span className={`text-[9px] px-1.5 py-0.5 rounded border ${locationSource === 'prop' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
+                  {getSourceLabel()}
+                </span>
+              )}
+            </div>
+            {!currentLocation ? (
+              <p className="text-[10px] text-gray-500">Aktifkan lokasi untuk melihat hasil terdekat.</p>
+            ) : (
+              <p className="text-[10px] text-gray-500 hidden lg:block">{t('home.nearbySubtitle')}</p>
+            )}
           </div>
-          <Link href="/search" className="text-[10px] lg:text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-full transition-colors flex items-center gap-1">
-            {t('common.viewAll')}
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
-          </Link>
+
+          <div className="flex items-center gap-2 self-start lg:self-auto">
+            {!currentLocation && (
+              <>
+                <button onClick={handleUseMyLocation} className="text-[10px] font-bold text-red-600 bg-white border border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors shadow-sm">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  <span className="hidden lg:inline">Cari Sekitar Saya</span>
+                  <span className="lg:hidden">Lokasi</span>
+                </button>
+                <Link href="/profile/address" className="text-[10px] font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors">
+                  + Alamat
+                </Link>
+              </>
+            )}
+            <Link href="/search" className="text-[10px] lg:text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-full transition-colors flex items-center gap-1">
+              {t('common.viewAll')}
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            </Link>
+          </div>
         </div>
 
         {/* LIST - Snap Scroll */}
         <div className="flex gap-3 lg:gap-4 overflow-x-auto px-4 lg:px-8 pb-4 pt-1 no-scrollbar snap-x">
           {providers.map((prov) => {
-             // --- Logic Jarak ---
-             let distanceStr = null;
-             if (userLocation && prov.userId?.location?.coordinates) {
-                 const provLng = prov.userId.location.coordinates[0];
-                 const provLat = prov.userId.location.coordinates[1];
-                 distanceStr = calculateDistance(userLocation.lat, userLocation.lng, provLat, provLng);
-             }
+            let distanceStr = null;
+            if (userLocation && prov.userId?.location?.coordinates) {
+              const provLng = prov.userId.location.coordinates[0];
+              const provLat = prov.userId.location.coordinates[1];
+              distanceStr = calculateDistance(userLocation.lat, userLocation.lng, provLat, provLng);
+            }
 
-             // --- Helpers Services & Price ---
-             const activeServices = prov.services || [];
-             
-             // 1. Ambil nama services (Max 2 item agar compact)
-             const serviceNames = activeServices
-                .filter(s => s.isActive && s.serviceId?.name)
-                .map(s => s.serviceId.name)
-                .slice(0, 2)
-                .join(', ');
-             
-             // 2. Tentukan teks services
-             const serviceDisplay = serviceNames || 'Belum mendaftar layanan';
+            // --- Helpers Services & Price ---
+            const activeServices = prov.services || [];
 
-             const getMinPrice = () => {
-                 if (activeServices.length === 0) return 0;
-                 return Math.min(...activeServices.map((s) => s.price || 0));
-             };
-             const minPrice = getMinPrice();
+            // 1. Ambil nama services (Max 2 item agar compact)
+            const serviceNames = activeServices
+              .filter(s => s.isActive && s.serviceId?.name)
+              .map(s => s.serviceId.name)
+              .slice(0, 2)
+              .join(', ');
 
-             // Helper Lokasi
-             const getLocationLabel = () => {
-                const addr = prov.userId?.address;
-                if (!addr) return 'Lokasi Mitra';
-                if (addr.district) return `Kec. ${addr.district}`;
-                if (addr.city) return addr.city;
-                return 'Lokasi Mitra';
-             };
+            // 2. Tentukan teks services
+            const serviceDisplay = serviceNames || 'Belum mendaftar layanan';
 
-             // Link ke Profil
-             const profileLink = prov.userId?.username 
-                ? `/u/${prov.userId.username}` 
-                : `/u/${prov._id}`;
+            const getMinPrice = () => {
+              if (activeServices.length === 0) return 0;
+              return Math.min(...activeServices.map((s) => s.price || 0));
+            };
+            const minPrice = getMinPrice();
 
-             return (
+            // Helper Lokasi
+            const getLocationLabel = () => {
+              const addr = prov.userId?.address;
+              if (!addr) return 'Lokasi Mitra';
+              if (addr.district) return `Kec. ${addr.district}`;
+              if (addr.city) return addr.city;
+              return 'Lokasi Mitra';
+            };
+
+            // Link ke Profil
+            const profileLink = prov.userId?.username
+              ? `/u/${prov.userId.username}`
+              : `/u/${prov._id}`;
+
+            return (
               <Link
                 href={profileLink}
                 key={prov._id}
@@ -203,15 +315,15 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
 
                   <div className="flex items-center gap-1 mb-0.5">
                     <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <p className="text-[10px] text-gray-500 truncate w-full">
-                        {serviceDisplay}
-                        {activeServices.length > 2 && <span className="text-[9px] align-top ml-0.5">+</span>}
+                      {serviceDisplay}
+                      {activeServices.length > 2 && <span className="text-[9px] align-top ml-0.5">+</span>}
                     </p>
                   </div>
-                  
+
                   {/* Lokasi & Jarak */}
                   <div className="flex items-center gap-1 text-[9px] text-gray-400 leading-tight">
                     <span className="truncate max-w-[60%]">{getLocationLabel()}</span>
@@ -225,19 +337,19 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
 
                   <div className="mt-auto pt-2 flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-[8px] text-gray-400 leading-none mb-0.5">{t('common.start')}</span>
-                        <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
-                            {minPrice > 0 ? formatCompactPrice(minPrice) : t('common.contact')}
-                        </span>
+                      <span className="text-[8px] text-gray-400 leading-none mb-0.5">{t('common.start')}</span>
+                      <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
+                        {minPrice > 0 ? formatCompactPrice(minPrice) : t('common.contact')}
+                      </span>
                     </div>
                     {/* Action Icon */}
                     <div className="w-5 h-5 rounded-full bg-red-50 text-red-400 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center transition-colors">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
                     </div>
                   </div>
                 </div>
               </Link>
-             );
+            );
           })}
         </div>
       </div>
