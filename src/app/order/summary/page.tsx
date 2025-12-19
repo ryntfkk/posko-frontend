@@ -23,6 +23,7 @@ import { Provider } from '@/features/providers/types';
 import { settingsApi } from '@/features/settings/api';
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
+import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
 
 // Import komponen lokal
 import { AttachmentUploader } from '@/components/OrderComponents';
@@ -108,13 +109,24 @@ function OrderSummaryContent() {
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
   const [tempAddress, setTempAddress] = useState<Address>({
     detail: '',
-    province: 'Jawa Timur',
-    city: 'Surabaya',
+    province: '',
+    city: '',
     district: '',
     village: '',
     postalCode: ''
   });
   const [orderLocation, setOrderLocation] = useState<GeoLocation | undefined>(undefined);
+
+  // [NEW] Region States
+  const [provinces, setProvinces] = useState<Region[]>([]);
+  const [cities, setCities] = useState<Region[]>([]);
+  const [districts, setDistricts] = useState<Region[]>([]);
+  const [villages, setVillages] = useState<Region[]>([]);
+
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+  const [selectedCityId, setSelectedCityId] = useState<string>('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('');
+  const [selectedVillageId, setSelectedVillageId] = useState<string>(''); // Not strictly needed for logic if we just save name, but good for UI consistency
 
   // Customer Contact
   const [customerContact, setCustomerContact] = useState<CustomerContact>({
@@ -297,8 +309,9 @@ function OrderSummaryContent() {
 
   // Handler Simpan Alamat (Modal)
   const handleSaveAddress = async () => {
-    if (!tempAddress.detail || !tempAddress.city) {
-      alert("Mohon lengkapi detail alamat dan kota.");
+    // Validasi Lengkap
+    if (!tempAddress.detail || !tempAddress.province || !tempAddress.city || !tempAddress.district || !tempAddress.village) {
+      alert("Mohon lengkapi semua field alamat (Provinsi, Kota, Kecamatan, Kelurahan, & Detail).");
       return;
     }
 
@@ -316,6 +329,89 @@ function OrderSummaryContent() {
       setSelectedAddress(tempAddress);
       setIsAddressModalOpen(false);
     }
+  };
+
+  // [NEW] Region Handlers
+  useEffect(() => {
+    // Fetch provinces when modal opens or component mounts
+    if (isAddressModalOpen && provinces.length === 0) {
+      fetchProvinces().then(res => {
+        if (res.success) setProvinces(res.data);
+      });
+    }
+  }, [isAddressModalOpen, provinces.length]);
+
+  const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedProvinceId(id);
+
+    // Reset lower levels
+    setCities([]); setDistricts([]); setVillages([]);
+    setSelectedCityId(''); setSelectedDistrictId(''); setSelectedVillageId('');
+
+    // Update Name in tempAddress
+    const region = provinces.find(p => p.id === id);
+    setTempAddress(prev => ({
+      ...prev,
+      province: region?.name || '',
+      city: '', district: '', village: ''
+    }));
+
+    if (id) {
+      const res = await fetchRegionChildren(id);
+      if (res.success) setCities(res.data);
+    }
+  };
+
+  const handleCityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedCityId(id);
+
+    setDistricts([]); setVillages([]);
+    setSelectedDistrictId(''); setSelectedVillageId('');
+
+    const region = cities.find(c => c.id === id);
+    setTempAddress(prev => ({
+      ...prev,
+      city: region?.name || '',
+      district: '', village: ''
+    }));
+
+    if (id) {
+      const res = await fetchRegionChildren(id);
+      if (res.success) setDistricts(res.data);
+    }
+  };
+
+  const handleDistrictChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedDistrictId(id);
+
+    setVillages([]);
+    setSelectedVillageId('');
+
+    const region = districts.find(d => d.id === id);
+    setTempAddress(prev => ({
+      ...prev,
+      district: region?.name || '',
+      village: ''
+    }));
+
+    if (id) {
+      const res = await fetchRegionChildren(id);
+      if (res.success) setVillages(res.data);
+    }
+  };
+
+  const handleVillageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedVillageId(id);
+
+    const region = villages.find(v => v.id === id);
+    setTempAddress(prev => ({
+      ...prev,
+      village: region?.name || ''
+    }));
   };
 
   // Handler Date Change
@@ -518,7 +614,7 @@ function OrderSummaryContent() {
           phone: customerContact.phone.trim(),
           alternatePhone: showAlternatePhone ? (customerContact.alternatePhone?.trim() || '') : ''
         },
-      
+
         orderNote: '',
         propertyDetails: propertyDetails,
         scheduledTimeSlot: {
@@ -532,532 +628,580 @@ function OrderSummaryContent() {
           description: att.description,
           file: null // [FIX] Jangan kirim file object ke API, hanya URL
         })),
-          voucherCode: appliedPromo?.code
-    };
+        voucherCode: appliedPromo?.code
+      };
 
-    console.log("1. Membuat Order...", orderPayload);
-    const orderRes = await createOrder(orderPayload);
+      console.log("1. Membuat Order...", orderPayload);
+      const orderRes = await createOrder(orderPayload);
 
-    // [FIX] Mengambil data ID dan Number dengan benar dari struktur response Axios (createOrder masih return AxiosResponse)
-    // Response backend: { message: "...", data: { _id: "...", orderNumber: "..." } }
-    const orderData = orderRes.data.data;
-    const orderId = orderData._id;
-    const orderNumber = orderData.orderNumber;
+      // [FIX] Mengambil data ID dan Number dengan benar dari struktur response Axios (createOrder masih return AxiosResponse)
+      // Response backend: { message: "...", data: { _id: "...", orderNumber: "..." } }
+      const orderData = orderRes.data.data;
+      const orderId = orderData._id;
+      const orderNumber = orderData.orderNumber;
 
-    console.log("2. Meminta Token Pembayaran...", { orderId });
+      console.log("2. Meminta Token Pembayaran...", { orderId });
 
-    if (!orderId) {
-      throw new Error("Gagal mendapatkan Order ID dari server.");
+      if (!orderId) {
+        throw new Error("Gagal mendapatkan Order ID dari server.");
+      }
+
+      // [FIX CRITICAL] createPayment di api.ts mengembalikan response.data langsung (sudah unwrapped)
+      const paymentRes = await createPayment(orderId);
+
+      // [FIX] Karena sudah unwrapped, strukturnya langsung { message: '...', data: { snapToken: '...' } }
+      const paymentData = paymentRes.data;
+      const snapToken = paymentData.snapToken;
+
+      console.log("3. Membuka Snap Midtrans...", { snapToken });
+      if (!snapToken) {
+        throw new Error("Gagal mendapatkan Snap Token dari server pembayaran.");
+      }
+
+      if (window.snap) {
+        window.snap.pay(snapToken, {
+          onSuccess: (result) => {
+            console.log('✅ Pembayaran Berhasil:', result);
+            alert(`Pembayaran Berhasil! Order: ${orderNumber}`);
+            clearCart();
+            router.push('/orders');
+          },
+          onPending: (result) => {
+            console.log('⏳ Menunggu Pembayaran:', result);
+            alert(`Menunggu pembayaran untuk order ${orderNumber}...`);
+            router.push(`/orders/${orderId}`);
+          },
+          onError: (result) => {
+            console.error('❌ Gagal Bayar:', result);
+            alert('Pembayaran gagal. Silakan coba lagi dari halaman detail order.');
+            router.push(`/orders/${orderId}`);
+          },
+          onClose: () => {
+            console.log('📦 Popup Ditutup. Order tersimpan.');
+            router.push(`/orders/${orderId}`);
+          }
+        });
+      }
+
+    } catch (error: any) {
+      console.error("❌ Error saat membuat order:", error);
+      alert(error.response?.data?.message || error.message || 'Terjadi kesalahan.');
+    } finally {
+      setIsProcessing(false);
     }
+  };
 
-    // [FIX CRITICAL] createPayment di api.ts mengembalikan response.data langsung (sudah unwrapped)
-    const paymentRes = await createPayment(orderId);
+  const handleAddAttachment = useCallback((file: File, desc: string) => {
+    const previewUrl = URL.createObjectURL(file);
+    setAttachments(prev => [...prev, { url: previewUrl, type: 'photo', description: desc.trim(), file: file }]);
+  }, []);
 
-    // [FIX] Karena sudah unwrapped, strukturnya langsung { message: '...', data: { snapToken: '...' } }
-    const paymentData = paymentRes.data;
-    const snapToken = paymentData.snapToken;
+  const handleRemoveAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
-    console.log("3. Membuka Snap Midtrans...", { snapToken });
-    if (!snapToken) {
-      throw new Error("Gagal mendapatkan Snap Token dari server pembayaran.");
-    }
-
-    if (window.snap) {
-      window.snap.pay(snapToken, {
-        onSuccess: (result) => {
-          console.log('✅ Pembayaran Berhasil:', result);
-          alert(`Pembayaran Berhasil! Order: ${orderNumber}`);
-          clearCart();
-          router.push('/orders');
-        },
-        onPending: (result) => {
-          console.log('⏳ Menunggu Pembayaran:', result);
-          alert(`Menunggu pembayaran untuk order ${orderNumber}...`);
-          router.push(`/orders/${orderId}`);
-        },
-        onError: (result) => {
-          console.error('❌ Gagal Bayar:', result);
-          alert('Pembayaran gagal. Silakan coba lagi dari halaman detail order.');
-          router.push(`/orders/${orderId}`);
-        },
-        onClose: () => {
-          console.log('📦 Popup Ditutup. Order tersimpan.');
-          router.push(`/orders/${orderId}`);
-        }
-      });
-    }
-
-  } catch (error: any) {
-    console.error("❌ Error saat membuat order:", error);
-    alert(error.response?.data?.message || error.message || 'Terjadi kesalahan.');
-  } finally {
-    setIsProcessing(false);
-  }
-};
-
-const handleAddAttachment = useCallback((file: File, desc: string) => {
-  const previewUrl = URL.createObjectURL(file);
-  setAttachments(prev => [...prev, { url: previewUrl, type: 'photo', description: desc.trim(), file: file }]);
-}, []);
-
-const handleRemoveAttachment = useCallback((index: number) => {
-  setAttachments(prev => prev.filter((_, i) => i !== index));
-}, []);
-
-if (isProfileLoading || !isInitialized) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
-      <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-      <p className="text-sm text-gray-500">Memuat data...</p>
-    </div>
-  );
-}
-
-if (activeCartItems.length === 0) {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
-      <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm0 0H7"></path>
-      </svg>
-      <h2 className="text-xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
-      <Link href="/checkout" className="inline-block mt-4 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
-        Kembali ke Layanan
-      </Link>
-    </div>
-  );
-}
-
-return (
-  <div className="min-h-screen bg-gray-50 pb-24 font-sans relative">
-    {/* Header */}
-    <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-3 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600 p-1">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-        </button>
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block">Langkah Terakhir</span>
-          <h1 className="text-lg font-bold text-gray-900 leading-tight">Ringkasan Pesanan</h1>
-        </div>
+  if (isProfileLoading || !isInitialized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+        <p className="text-sm text-gray-500">Memuat data...</p>
       </div>
-    </header>
+    );
+  }
 
-    {/* Main Content Single Column */}
-    <main className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
+  if (activeCartItems.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
+        <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm0 0H7"></path>
+        </svg>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
+        <Link href="/checkout" className="inline-block mt-4 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+          Kembali ke Layanan
+        </Link>
+      </div>
+    );
+  }
 
-      {/* BAGIAN 1: INFO PROVIDER / TIPE ORDER */}
-      {checkoutType === 'direct' ? (
-        <section className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-red-600/5 rounded-bl-full -mr-2 -mt-2"></div>
-          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center shrink-0 overflow-hidden relative border border-gray-200">
-            {providerDetail?.userId?.profilePictureUrl ? (
-              <Image src={providerDetail.userId.profilePictureUrl} alt="Provider" fill className="object-cover" />
-            ) : (
-              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-            )}
-          </div>
-          <div className="relative z-10">
-            <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Direct Order</p>
-            <h2 className="text-base font-bold text-gray-900">{providerDetail?.userId?.fullName || providerData.name}</h2>
-            <p className="text-xs text-gray-500">Mitra Pilihan Anda</p>
-          </div>
-        </section>
-      ) : (
-        <section className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-          </div>
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24 font-sans relative">
+      {/* Header */}
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-3 flex items-center gap-3">
+          <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600 p-1">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+          </button>
           <div>
-            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Regular Order</p>
-            <h2 className="text-base font-bold text-gray-900">Pencarian Mitra Otomatis</h2>
-            <p className="text-xs text-gray-500">Kami akan mencarikan mitra terdekat untuk Anda.</p>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 block">Langkah Terakhir</span>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Ringkasan Pesanan</h1>
           </div>
-        </section>
-      )}
-
-      {/* BAGIAN 2: DETAIL ITEM */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-gray-50 pb-2">
-          <h2 className="text-sm font-bold text-gray-900">Item Layanan</h2>
-          <button onClick={() => router.back()} className="text-xs font-semibold text-red-600 hover:underline">Ubah</button>
         </div>
-        <div className="space-y-3">
-          {activeCartItems.map((item) => (
-            <div key={item.id} className="flex justify-between items-start gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">{item.serviceName}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
-              </div>
-              <span className="text-sm font-bold text-gray-900">{formatCurrency(item.totalPrice)}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      </header>
 
-      {/* BAGIAN 3: KONTAK PENERIMA */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-          </div>
-          <h2 className="text-sm font-bold text-gray-900">Kontak Penerima</h2>
-        </div>
+      {/* Main Content Single Column */}
+      <main className="max-w-3xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
-        {!isContactEditMode ? (
-          <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200">
-            <div>
-              <p className="text-sm font-bold text-gray-900">{customerContact.name || 'Nama Belum Diisi'}</p>
-              <p className="text-xs text-gray-600 mt-1">
-                {customerContact.phone || 'No. HP Belum Diisi'}
-                {customerContact.alternatePhone ? ` / ${customerContact.alternatePhone}` : ''}
-              </p>
-            </div>
-            <button onClick={() => setIsContactEditMode(true)} className="px-3 py-1.5 bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-lg hover:border-red-300 hover:text-red-600 transition-colors shadow-sm">Ubah</button>
-          </div>
-        ) : (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
-                <input type="text" value={customerContact.name} onChange={(e) => setCustomerContact(prev => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">No. HP Utama <span className="text-red-500">*</span></label>
-                <input type="tel" value={customerContact.phone} onChange={(e) => setCustomerContact(prev => ({ ...prev, phone: e.target.value }))} placeholder="08xx-xxxx-xxxx" className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer w-fit">
-                <input type="checkbox" checked={showAlternatePhone} onChange={(e) => setShowAlternatePhone(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
-                <span className="text-xs text-gray-600">Nomor cadangan</span>
-              </label>
-              {showAlternatePhone && (
-                <input type="tel" value={customerContact.alternatePhone} onChange={(e) => setCustomerContact(prev => ({ ...prev, alternatePhone: e.target.value }))} placeholder="Nomor HP Alternatif" className="w-full md:w-1/2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
+        {/* BAGIAN 1: INFO PROVIDER / TIPE ORDER */}
+        {checkoutType === 'direct' ? (
+          <section className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-red-600/5 rounded-bl-full -mr-2 -mt-2"></div>
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center shrink-0 overflow-hidden relative border border-gray-200">
+              {providerDetail?.userId?.profilePictureUrl ? (
+                <Image src={providerDetail.userId.profilePictureUrl} alt="Provider" fill className="object-cover" />
+              ) : (
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               )}
             </div>
-            <div className="flex justify-end pt-2">
-              <button onClick={() => setIsContactEditMode(false)} className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800">Simpan Kontak</button>
+            <div className="relative z-10">
+              <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Direct Order</p>
+              <h2 className="text-base font-bold text-gray-900">{providerDetail?.userId?.fullName || providerData.name}</h2>
+              <p className="text-xs text-gray-500">Mitra Pilihan Anda</p>
             </div>
-          </div>
-        )}
-      </section>
-
-      {/* BAGIAN 4: JADWAL KUNJUNGAN (IMPROVED UX) */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            </div>
-            <h2 className="text-sm font-bold text-gray-900">Jadwal Kunjungan</h2>
-          </div>
-          <button
-            onClick={handleOrderNow}
-            className="px-3 py-1.5 bg-red-50 text-xs font-bold text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            Order Sekarang
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {/* 1. Pilih Tanggal */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Pilih Tanggal <span className="text-red-500">*</span></label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={handleDateChange}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-
-          {/* 2. Pilih Slot Waktu */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-2 block">Pilih Waktu Kedatangan <span className="text-red-500">*</span></label>
-            <div className="grid grid-cols-2 gap-2">
-              {TIME_SLOTS.map((slot) => {
-                const isUnavailable = selectedDate ? isDateUnavailable(selectedDate, slot.start).unavailable : false;
-                return (
-                  <button
-                    key={slot.id}
-                    onClick={() => handleSlotSelect(slot.id, slot.start)}
-                    disabled={!selectedDate || isUnavailable}
-                    className={`p-2.5 rounded-xl border text-left transition-all ${selectedSlotId === slot.id
-                        ? 'bg-red-50 border-red-500 ring-1 ring-red-500'
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                      } ${(!selectedDate || isUnavailable) ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
-                  >
-                    <span className={`block text-xs font-bold ${selectedSlotId === slot.id ? 'text-red-700' : 'text-gray-900'}`}>
-                      {slot.label}
-                    </span>
-                    <span className="block text-[10px] text-gray-500 mt-0.5">
-                      {slot.range}
-                    </span>
-                    {isUnavailable && selectedDate && (
-                      <span className="block text-[9px] text-red-500 mt-0.5">Tidak tersedia</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {!selectedDate && <p className="text-[10px] text-gray-400 mt-1 italic">Pilih tanggal dulu untuk melihat slot.</p>}
-          </div>
-        </div>
-      </section>
-
-      {/* BAGIAN 5: LOKASI & PROPERTI (DENGAN MODAL ALAMAT) */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            </div>
-            <h2 className="text-sm font-bold text-gray-900">Lokasi Pelayanan</h2>
-          </div>
-          <button
-            onClick={() => {
-              // Pre-fill temp address saat modal dibuka
-              if (selectedAddress) setTempAddress(selectedAddress);
-              setIsAddressModalOpen(true);
-            }}
-            className="text-xs font-bold text-red-600 hover:underline"
-          >
-            {selectedAddress ? 'Ganti Alamat' : 'Tambah Alamat'}
-          </button>
-        </div>
-
-        {/* Info Alamat Text */}
-        {selectedAddress ? (
-          <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm text-gray-800">
-            <p className="font-bold">{selectedAddress.detail}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Kel. {selectedAddress.village}, Kec. {selectedAddress.district}, {selectedAddress.city}
-            </p>
-          </div>
+          </section>
         ) : (
-          <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-xs text-yellow-800 flex items-center gap-2 cursor-pointer" onClick={() => setIsAddressModalOpen(true)}>
-            <span>⚠️</span>
-            <span className="underline">Alamat belum diset. Klik untuk menambah.</span>
-          </div>
+          <section className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Regular Order</p>
+              <h2 className="text-base font-bold text-gray-900">Pencarian Mitra Otomatis</h2>
+              <p className="text-xs text-gray-500">Kami akan mencarikan mitra terdekat untuk Anda.</p>
+            </div>
+          </section>
         )}
 
-        {/* Peta - Selalu Render */}
-        <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 relative z-0">
-          {orderLocation && (
-            <LocationPicker
-              initialLat={orderLocation.coordinates[1]}
-              initialLng={orderLocation.coordinates[0]}
-              onLocationChange={handleLocationChange}
-            />
-          )}
-          {!orderLocation && (
-            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
-              {selectedAddress ? 'Menyiapkan peta...' : 'Pilih alamat terlebih dahulu.'}
-            </div>
-          )}
-        </div>
-
-        <p className="text-[10px] text-gray-500 text-center">Geser pin merah untuk akurasi posisi teknisi.</p>
-
-        {/* Detail Properti */}
-        <div className="pt-2 border-t border-gray-50 mt-4">
-          <p className="text-xs font-bold text-gray-900 mb-3">Detail Properti</p>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <select value={propertyDetails.type} onChange={(e) => setPropertyDetails(prev => ({ ...prev, type: e.target.value as PropertyDetails['type'] }))} className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none">
-              <option value="">Tipe Properti...</option>
-              <option value="rumah">Rumah</option>
-              <option value="apartemen">Apartemen</option>
-              <option value="kantor">Kantor</option>
-              <option value="ruko">Ruko</option>
-            </select>
-            <input type="text" value={propertyDetails.accessNote} onChange={(e) => setPropertyDetails(prev => ({ ...prev, accessNote: e.target.value }))} placeholder="Patokan / Catatan akses..." className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+        {/* BAGIAN 2: DETAIL ITEM */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+            <h2 className="text-sm font-bold text-gray-900">Item Layanan</h2>
+            <button onClick={() => router.back()} className="text-xs font-semibold text-red-600 hover:underline">Ubah</button>
           </div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={propertyDetails.hasParking} onChange={(e) => setPropertyDetails(prev => ({ ...prev, hasParking: e.target.checked }))} className="w-3.5 h-3.5 text-red-600 rounded border-gray-300" />
-              <span className="text-xs text-gray-600">Ada Parkir</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={propertyDetails.hasElevator} onChange={(e) => setPropertyDetails(prev => ({ ...prev, hasElevator: e.target.checked }))} className="w-3.5 h-3.5 text-red-600 rounded border-gray-300" />
-              <span className="text-xs text-gray-600">Ada Lift</span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      {/* BAGIAN 6: DOKUMENTASI */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div>
-          <h3 className="text-sm font-bold text-gray-900">Dokumentasi Kondisi (Wajib/Opsional)</h3>
-          <p className="text-xs text-gray-500 mt-1">Upload foto barang/lokasi dan berikan keterangan.</p>
-        </div>
-        <AttachmentUploader attachments={attachments} onAdd={handleAddAttachment} onRemove={handleRemoveAttachment} />
-      </section>
-
-      {/* BAGIAN 7: RINCIAN PEMBAYARAN */}
-      <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Rincian Pembayaran</h2>
-        <div className="space-y-2 text-xs text-gray-600">
-          <div className="flex justify-between">
-            <span>Subtotal Layanan</span>
-            <span className="font-medium text-gray-900">{formatCurrency(currentTotalAmount)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Biaya Aplikasi</span>
-            <span className={adminFee === 0 ? 'text-green-600' : ''}>{adminFee === 0 ? 'Gratis' : formatCurrency(adminFee)}</span>
-          </div>
-          {appliedPromo ? (
-            <div className="flex justify-between text-green-600 font-medium bg-green-50 p-2 rounded-lg mt-1">
-              <div className="flex items-center gap-2">
-                <span>Voucher: {appliedPromo.code}</span>
-                <button onClick={() => setAppliedPromo(null)} className="text-red-500 hover:text-red-700">(Hapus)</button>
-              </div>
-              <span>-{formatCurrency(appliedPromo.discount)}</span>
-            </div>
-          ) : (
-            <button onClick={() => setIsPromoModalOpen(true)} className="text-red-600 font-bold hover:underline text-left mt-1 flex items-center gap-1">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
-              Gunakan Voucher / Promo
-            </button>
-          )}
-        </div>
-
-        {/* Indikator Metode Pembayaran */}
-        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 mt-2">
-          <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wide">Metode:</div>
-          <div className="text-xs font-bold text-gray-700 flex items-center gap-1">
-            <span>💳</span> Midtrans (QRIS / VA / E-Wallet)
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-          <span className="text-sm font-bold text-gray-900">Total Tagihan</span>
-          <span className="text-lg font-black text-red-600">{formatCurrency(Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0)))}</span>
-        </div>
-      </section>
-
-    </main>
-
-    {/* BOTTOM FIXED CTA */}
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-      <div className="max-w-3xl mx-auto">
-        <button
-          onClick={handlePlaceOrderAndPay}
-          disabled={isProcessing || !selectedAddress || !selectedDate || !selectedSlotId || !customerContact.phone.trim()}
-          className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${isProcessing || !selectedAddress || !selectedDate || !selectedSlotId || !customerContact.phone.trim()
-            ? 'bg-gray-400 cursor-not-allowed shadow-none'
-            : 'bg-red-600 hover:bg-red-700 shadow-red-200'
-            }`}
-        >
-          {isProcessing ? (
-            <>
-              <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              Memproses...
-            </>
-          ) : (
-            <>Bayar Sekarang <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></>
-          )}
-        </button>
-      </div>
-    </div>
-
-    {/* MODAL PROMO (Tetap sama) */}
-    {isPromoModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-20 transition-opacity">
-        <div className="bg-white w-full max-w-sm mx-auto rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-            <h3 className="font-bold text-gray-900">Pakai Promo</h3>
-            <button onClick={() => setIsPromoModalOpen(false)} className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-900 shadow-sm"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="flex gap-2">
-              <input type="text" value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())} placeholder="Kode Voucher..." className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none uppercase text-sm" />
-              <button onClick={() => handleApplyPromo(promoCodeInput)} disabled={!promoCodeInput || isCheckingVoucher} className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 text-sm">{isCheckingVoucher ? '...' : 'Pakai'}</button>
-            </div>
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-              {availableVouchers.map((voucher) => (
-                <div key={voucher._id} onClick={() => { if (currentTotalAmount >= voucher.minPurchase) handleApplyPromo(voucher.code); }} className={`border border-gray-100 rounded-xl p-3 flex justify-between items-center hover:bg-red-50 hover:border-red-100 cursor-pointer transition-colors ${currentTotalAmount < voucher.minPurchase ? 'opacity-50 grayscale' : ''}`}>
-                  <div><p className="font-bold text-gray-900 text-sm">{voucher.code}</p><p className="text-[10px] text-gray-500">{voucher.description}</p></div>
-                  <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">{voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : formatCurrency(voucher.discountValue)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {/* MODAL EDIT ALAMAT (NEW) */}
-    {isAddressModalOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 animate-zoom-in">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Edit Alamat Pelayanan</h3>
           <div className="space-y-3">
+            {activeCartItems.map((item) => (
+              <div key={item.id} className="flex justify-between items-start gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">{item.serviceName}</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
+                </div>
+                <span className="text-sm font-bold text-gray-900">{formatCurrency(item.totalPrice)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* BAGIAN 3: KONTAK PENERIMA */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            </div>
+            <h2 className="text-sm font-bold text-gray-900">Kontak Penerima</h2>
+          </div>
+
+          {!isContactEditMode ? (
+            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div>
+                <p className="text-sm font-bold text-gray-900">{customerContact.name || 'Nama Belum Diisi'}</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {customerContact.phone || 'No. HP Belum Diisi'}
+                  {customerContact.alternatePhone ? ` / ${customerContact.alternatePhone}` : ''}
+                </p>
+              </div>
+              <button onClick={() => setIsContactEditMode(true)} className="px-3 py-1.5 bg-white border border-gray-200 text-xs font-bold text-gray-700 rounded-lg hover:border-red-300 hover:text-red-600 transition-colors shadow-sm">Ubah</button>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
+                  <input type="text" value={customerContact.name} onChange={(e) => setCustomerContact(prev => ({ ...prev, name: e.target.value }))} className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">No. HP Utama <span className="text-red-500">*</span></label>
+                  <input type="tel" value={customerContact.phone} onChange={(e) => setCustomerContact(prev => ({ ...prev, phone: e.target.value }))} placeholder="08xx-xxxx-xxxx" className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer w-fit">
+                  <input type="checkbox" checked={showAlternatePhone} onChange={(e) => setShowAlternatePhone(e.target.checked)} className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500" />
+                  <span className="text-xs text-gray-600">Nomor cadangan</span>
+                </label>
+                {showAlternatePhone && (
+                  <input type="tel" value={customerContact.alternatePhone} onChange={(e) => setCustomerContact(prev => ({ ...prev, alternatePhone: e.target.value }))} placeholder="Nomor HP Alternatif" className="w-full md:w-1/2 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-red-500 outline-none" />
+                )}
+              </div>
+              <div className="flex justify-end pt-2">
+                <button onClick={() => setIsContactEditMode(false)} className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800">Simpan Kontak</button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* BAGIAN 4: JADWAL KUNJUNGAN (IMPROVED UX) */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+              <h2 className="text-sm font-bold text-gray-900">Jadwal Kunjungan</h2>
+            </div>
+            <button
+              onClick={handleOrderNow}
+              className="px-3 py-1.5 bg-red-50 text-xs font-bold text-red-600 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Order Sekarang
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* 1. Pilih Tanggal */}
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Alamat Lengkap (Jalan/Gang/No)</label>
-              <textarea
-                value={tempAddress.detail}
-                onChange={(e) => setTempAddress(prev => ({ ...prev, detail: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                rows={2}
-                placeholder="Contoh: Jl. Mawar No. 12, Pagar Hitam"
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Pilih Tanggal <span className="text-red-500">*</span></label>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Kota/Kabupaten</label>
-                <input
-                  type="text"
-                  value={tempAddress.city}
-                  onChange={(e) => setTempAddress(prev => ({ ...prev, city: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                />
+
+            {/* 2. Pilih Slot Waktu */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">Pilih Waktu Kedatangan <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-2 gap-2">
+                {TIME_SLOTS.map((slot) => {
+                  const isUnavailable = selectedDate ? isDateUnavailable(selectedDate, slot.start).unavailable : false;
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => handleSlotSelect(slot.id, slot.start)}
+                      disabled={!selectedDate || isUnavailable}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${selectedSlotId === slot.id
+                        ? 'bg-red-50 border-red-500 ring-1 ring-red-500'
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                        } ${(!selectedDate || isUnavailable) ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                    >
+                      <span className={`block text-xs font-bold ${selectedSlotId === slot.id ? 'text-red-700' : 'text-gray-900'}`}>
+                        {slot.label}
+                      </span>
+                      <span className="block text-[10px] text-gray-500 mt-0.5">
+                        {slot.range}
+                      </span>
+                      {isUnavailable && selectedDate && (
+                        <span className="block text-[9px] text-red-500 mt-0.5">Tidak tersedia</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Kecamatan</label>
-                <input
-                  type="text"
-                  value={tempAddress.district}
-                  onChange={(e) => setTempAddress(prev => ({ ...prev, district: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Kelurahan/Desa</label>
-                <input
-                  type="text"
-                  value={tempAddress.village}
-                  onChange={(e) => setTempAddress(prev => ({ ...prev, village: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Kode Pos</label>
-                <input
-                  type="text"
-                  value={tempAddress.postalCode}
-                  onChange={(e) => setTempAddress(prev => ({ ...prev, postalCode: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                />
-              </div>
+              {!selectedDate && <p className="text-[10px] text-gray-400 mt-1 italic">Pilih tanggal dulu untuk melihat slot.</p>}
             </div>
           </div>
-          <div className="flex gap-3 mt-6">
-            <button onClick={() => setIsAddressModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 text-sm">Batal</button>
-            <button onClick={handleSaveAddress} className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-lg shadow-red-200">Simpan Alamat</button>
+        </section>
+
+        {/* BAGIAN 5: LOKASI & PROPERTI (DENGAN MODAL ALAMAT) */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <h2 className="text-sm font-bold text-gray-900">Lokasi Pelayanan</h2>
+            </div>
+            <button
+              onClick={() => {
+                // Pre-fill temp address saat modal dibuka
+                if (selectedAddress) setTempAddress(selectedAddress);
+                setIsAddressModalOpen(true);
+              }}
+              className="text-xs font-bold text-red-600 hover:underline"
+            >
+              {selectedAddress ? 'Ganti Alamat' : 'Tambah Alamat'}
+            </button>
           </div>
+
+          {/* Info Alamat Text */}
+          {selectedAddress ? (
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-sm text-gray-800">
+              <p className="font-bold">{selectedAddress.detail}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Kel. {selectedAddress.village}, Kec. {selectedAddress.district}, {selectedAddress.city}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-xs text-yellow-800 flex items-center gap-2 cursor-pointer" onClick={() => setIsAddressModalOpen(true)}>
+              <span>⚠️</span>
+              <span className="underline">Alamat belum diset. Klik untuk menambah.</span>
+            </div>
+          )}
+
+          {/* Peta - Selalu Render */}
+          <div className="h-64 w-full rounded-xl overflow-hidden border border-gray-200 relative z-0">
+            <LocationPicker
+              initialLat={orderLocation?.coordinates[1]}
+              initialLng={orderLocation?.coordinates[0]}
+              onLocationSelect={handleLocationChange}
+            />
+          </div>
+
+          <p className="text-[10px] text-gray-500 text-center">Geser pin merah untuk akurasi posisi teknisi.</p>
+
+          {/* Detail Properti */}
+          <div className="pt-2 border-t border-gray-50 mt-4">
+            <p className="text-xs font-bold text-gray-900 mb-3">Detail Properti</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <select value={propertyDetails.type} onChange={(e) => setPropertyDetails(prev => ({ ...prev, type: e.target.value as PropertyDetails['type'] }))} className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none">
+                <option value="">Tipe Properti...</option>
+                <option value="rumah">Rumah</option>
+                <option value="apartemen">Apartemen</option>
+                <option value="kantor">Kantor</option>
+                <option value="ruko">Ruko</option>
+              </select>
+              <input type="text" value={propertyDetails.accessNote} onChange={(e) => setPropertyDetails(prev => ({ ...prev, accessNote: e.target.value }))} placeholder="Patokan / Catatan akses..." className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl outline-none" />
+            </div>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={propertyDetails.hasParking} onChange={(e) => setPropertyDetails(prev => ({ ...prev, hasParking: e.target.checked }))} className="w-3.5 h-3.5 text-red-600 rounded border-gray-300" />
+                <span className="text-xs text-gray-600">Ada Parkir</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={propertyDetails.hasElevator} onChange={(e) => setPropertyDetails(prev => ({ ...prev, hasElevator: e.target.checked }))} className="w-3.5 h-3.5 text-red-600 rounded border-gray-300" />
+                <span className="text-xs text-gray-600">Ada Lift</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* BAGIAN 6: DOKUMENTASI */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Dokumentasi Kondisi (Wajib/Opsional)</h3>
+            <p className="text-xs text-gray-500 mt-1">Upload foto barang/lokasi dan berikan keterangan.</p>
+          </div>
+          <AttachmentUploader attachments={attachments} onAdd={handleAddAttachment} onRemove={handleRemoveAttachment} />
+        </section>
+
+        {/* BAGIAN 7: RINCIAN PEMBAYARAN */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2">Rincian Pembayaran</h2>
+          <div className="space-y-2 text-xs text-gray-600">
+            <div className="flex justify-between">
+              <span>Subtotal Layanan</span>
+              <span className="font-medium text-gray-900">{formatCurrency(currentTotalAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Biaya Aplikasi</span>
+              <span className={adminFee === 0 ? 'text-green-600' : ''}>{adminFee === 0 ? 'Gratis' : formatCurrency(adminFee)}</span>
+            </div>
+            {appliedPromo ? (
+              <div className="flex justify-between text-green-600 font-medium bg-green-50 p-2 rounded-lg mt-1">
+                <div className="flex items-center gap-2">
+                  <span>Voucher: {appliedPromo.code}</span>
+                  <button onClick={() => setAppliedPromo(null)} className="text-red-500 hover:text-red-700">(Hapus)</button>
+                </div>
+                <span>-{formatCurrency(appliedPromo.discount)}</span>
+              </div>
+            ) : (
+              <button onClick={() => setIsPromoModalOpen(true)} className="text-red-600 font-bold hover:underline text-left mt-1 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                Gunakan Voucher / Promo
+              </button>
+            )}
+          </div>
+
+          {/* Indikator Metode Pembayaran */}
+          <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200 mt-2">
+            <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wide">Metode:</div>
+            <div className="text-xs font-bold text-gray-700 flex items-center gap-1">
+              <span>💳</span> Midtrans (QRIS / VA / E-Wallet)
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
+            <span className="text-sm font-bold text-gray-900">Total Tagihan</span>
+            <span className="text-lg font-black text-red-600">{formatCurrency(Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0)))}</span>
+          </div>
+        </section>
+
+      </main>
+
+      {/* BOTTOM FIXED CTA */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="max-w-3xl mx-auto">
+          {/* Validation Warning */}
+          {(!selectedDate || !selectedSlotId || !selectedAddress || !customerContact.phone.trim()) && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 flex items-start gap-2 animate-in slide-in-from-bottom-2">
+              <span className="text-lg">⚠️</span>
+              <div className="text-xs text-yellow-800">
+                <p className="font-bold">Mohon lengkapi data berikut:</p>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {!selectedDate && <li>Pilih Tanggal Kunjungan</li>}
+                  {!selectedSlotId && <li>Pilih Waktu Kedatangan</li>}
+                  {!selectedAddress && <li>Alamat Pelayanan</li>}
+                  {!customerContact.phone.trim() && <li>Nomor HP Kontak</li>}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handlePlaceOrderAndPay}
+            disabled={isProcessing}
+            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${isProcessing || !selectedAddress || !selectedDate || !selectedSlotId || !customerContact.phone.trim()
+              ? 'bg-gray-400 shadow-none' // Visually disabled but clickable (unless processing)
+              : 'bg-red-600 hover:bg-red-700 shadow-red-200'
+              }`}
+          >
+            {isProcessing ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Memproses...
+              </>
+            ) : (
+              <>Bayar Sekarang <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></>
+            )}
+          </button>
         </div>
       </div>
-    )}
 
-  </div>
-);
+      {/* MODAL PROMO (Tetap sama) */}
+      {isPromoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-20 transition-opacity">
+          <div className="bg-white w-full max-w-sm mx-auto rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <h3 className="font-bold text-gray-900">Pakai Promo</h3>
+              <button onClick={() => setIsPromoModalOpen(false)} className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-900 shadow-sm"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="flex gap-2">
+                <input type="text" value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())} placeholder="Kode Voucher..." className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none uppercase text-sm" />
+                <button onClick={() => handleApplyPromo(promoCodeInput)} disabled={!promoCodeInput || isCheckingVoucher} className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 text-sm">{isCheckingVoucher ? '...' : 'Pakai'}</button>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {availableVouchers.map((voucher) => (
+                  <div key={voucher._id} onClick={() => { if (currentTotalAmount >= voucher.minPurchase) handleApplyPromo(voucher.code); }} className={`border border-gray-100 rounded-xl p-3 flex justify-between items-center hover:bg-red-50 hover:border-red-100 cursor-pointer transition-colors ${currentTotalAmount < voucher.minPurchase ? 'opacity-50 grayscale' : ''}`}>
+                    <div><p className="font-bold text-gray-900 text-sm">{voucher.code}</p><p className="text-[10px] text-gray-500">{voucher.description}</p></div>
+                    <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">{voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : formatCurrency(voucher.discountValue)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT ALAMAT (NEW) */}
+      {isAddressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 animate-zoom-in max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 sticky top-0 bg-white z-10 pb-2 border-b border-gray-100">Edit Alamat Pelayanan</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Alamat Lengkap (Jalan/Gang/No)</label>
+                <textarea
+                  value={tempAddress.detail}
+                  onChange={(e) => setTempAddress(prev => ({ ...prev, detail: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                  rows={2}
+                  placeholder="Contoh: Jl. Mawar No. 12, Pagar Hitam"
+                />
+              </div>
+
+              {/* PROVINCE */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Provinsi</label>
+                <select
+                  value={selectedProvinceId}
+                  onChange={handleProvinceChange}
+                  className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                >
+                  <option value="">Pilih Provinsi...</option>
+                  {provinces.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* KOTA/KABUPATEN */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Kota/Kabupaten</label>
+                  <select
+                    value={selectedCityId}
+                    onChange={handleCityChange}
+                    disabled={!selectedProvinceId}
+                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">Pilih Kota...</option>
+                    {cities.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* KECAMATAN */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Kecamatan</label>
+                  <select
+                    value={selectedDistrictId}
+                    onChange={handleDistrictChange}
+                    disabled={!selectedCityId}
+                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">Pilih Kecamatan...</option>
+                    {districts.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* KELURAHAN */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Kelurahan/Desa</label>
+                  <select
+                    value={selectedVillageId}
+                    onChange={handleVillageChange}
+                    disabled={!selectedDistrictId}
+                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">Pilih Kelurahan...</option>
+                    {villages.map(v => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* KODE POS */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Kode Pos</label>
+                  <input
+                    type="text"
+                    value={tempAddress.postalCode}
+                    onChange={(e) => setTempAddress(prev => ({ ...prev, postalCode: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                    placeholder="Kode Pos"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setIsAddressModalOpen(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 text-sm">Batal</button>
+              <button onClick={handleSaveAddress} className="flex-1 py-2.5 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 text-sm shadow-lg shadow-red-200">Simpan Alamat</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
 }
 
 export default function OrderSummaryPage() {

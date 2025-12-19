@@ -4,6 +4,20 @@
 // Pastikan path ini benar sesuai struktur project Anda
 import { Provider } from '@/features/providers/types';
 
+export interface Address {
+  province: string;
+  city: string;
+  district: string;
+  village: string;
+  postalCode: string;
+  detail: string;
+}
+
+export interface GeoLocation {
+  type: string; // 'Point'
+  coordinates: number[]; // [lng, lat]
+}
+
 export interface User {
   _id: string;
   fullName: string;
@@ -15,16 +29,8 @@ export interface User {
   profilePictureUrl?: string;
   balance?: number;
   providerStatus?: string; // [NEW] Status verifikasi provider
-  location?: {
-    type: string;
-    coordinates: number[];
-  };
-  address?: {
-    city?: string;
-    province?: string;
-    district?: string;
-    detail?: string;
-  };
+  location?: GeoLocation;
+  address?: Partial<Address>;
 }
 
 export interface AuthTokens {
@@ -59,18 +65,8 @@ export interface RegisterPayload {
   roles?: string[];
   verificationToken: string; // [REQUIRED] Token Email
   phoneVerificationToken?: string; // [OPTIONAL] Token WhatsApp
-  address?: {
-    province: string;
-    city: string;
-    district: string;
-    village: string;
-    postalCode: string;
-    detail: string;
-  };
-  location?: {
-    type: string;
-    coordinates: number[]; // [longitude, latitude]
-  };
+  address?: Address;
+  location?: GeoLocation;
   profilePictureUrl?: string;
   bannerPictureUrl?: string;
   bio?: string;
