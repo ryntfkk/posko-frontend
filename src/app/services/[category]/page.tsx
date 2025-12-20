@@ -419,53 +419,71 @@ export default function ServiceCategoryPage() {
         {/* --- MAIN CONTENT --- */}
         <main>
 
-          {/* SLIM BANNER WITH ADVANTAGES */}
+          {/* COMPACT HORIZONTAL SLIDER CARD (FIXED) */}
           <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden mb-5">
-            <div className="bg-gradient-to-r from-red-600 to-red-500 px-4 py-3 flex items-center justify-between text-white relative overflow-hidden">
-              {/* Decorative BG */}
-              <div className="absolute -right-4 -top-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
 
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm">Basic Order</span>
+            {/* 1. COMPACT HEADER */}
+            <div className="bg-gradient-to-r from-red-600 to-red-500 px-4 py-3 flex items-center justify-between shadow-sm relative z-10">
+
+              {/* Title Section */}
+              <div className="flex items-center gap-2">
+                <div className="bg-white/20 p-1.5 rounded-lg text-white backdrop-blur-sm">
+                  {/* Menggunakan icon yang pasti ada dari kode aslimu */}
+                  <Icons.Bolt className="w-4 h-4" />
                 </div>
-                <h2 className="text-sm lg:text-base font-bold">Pesan Kilat {categoryDisplayName}</h2>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-white leading-none">Pesan Kilat</h2>
+                    <span className="bg-red-800/30 text-[9px] px-1.5 py-0.5 rounded text-white font-medium border border-white/10">BASIC</span>
+                  </div>
+                  <p className="text-[10px] text-red-100 mt-0.5 font-medium opacity-90">{categoryDisplayName}</p>
+                </div>
               </div>
 
+              {/* Action Button */}
               <button
                 onClick={handleBasicOrder}
-                className="relative z-10 bg-white text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 shadow-sm transition-all flex items-center gap-1.5"
+                className="bg-white text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-50 active:scale-95 transition-all shadow-sm flex items-center gap-1"
               >
-                <Icons.Bolt />
-                Pesan Sekarang
+                <span>Pesan</span>
+                {/* Ganti Icons.ArrowRight dengan SVG manual agar tidak error */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
               </button>
             </div>
 
-            {/* ADVANTAGES ROW (Keunggulan) */}
-            <div className="px-3 py-2 bg-red-50/50 flex items-center justify-between lg:justify-start lg:gap-8">
-              <div className="flex items-center gap-1.5 text-[10px] lg:text-xs text-gray-600 font-medium">
-                <Icons.MapPinSolid />
-                <span>Mitra Terdekat</span>
-              </div>
-              <div className="w-px h-3 bg-red-200 lg:hidden"></div>
-              <div className="flex items-center gap-1.5 text-[10px] lg:text-xs text-gray-600 font-medium">
-                <Icons.ShieldCheck />
-                <span>Respons Cepat</span>
-              </div>
-              <div className="w-px h-3 bg-red-200 lg:hidden"></div>
-              <div className="flex items-center gap-1.5 text-[10px] lg:text-xs text-gray-600 font-medium">
-                <Icons.Price />
-                <span>Harga Standar</span>
+            {/* 2. HORIZONTAL SCROLLABLE SERVICES (GESER) */}
+            <div className="bg-white py-3 relative group">
+
+              {/* Scroll Area */}
+              <div className="flex overflow-x-auto px-4 gap-3 pb-2 scrollbar-hide snap-x snap-mandatory">
+                {/* Wrapper flex agar item berjejer ke samping */}
+                <div className="flex flex-row gap-3 min-w-full">
+                  <ServiceListSection categoryParam={categoryParam} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* [BARU] LIST LAYANAN SPECIFIC */}
-          <div className="mt-4 mb-2">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Layanan Spesifik</h3>
-            <ServiceListSection categoryParam={categoryParam} />
-          </div>
+            {/* 3. SLIM FOOTER ADVANTAGES */}
+            <div className="bg-gray-50 border-t border-gray-100 px-4 py-2 flex items-center justify-between text-[10px] text-gray-500 font-medium">
+              <div className="flex items-center gap-1.5">
+                <Icons.MapPinSolid className="text-red-500 w-3 h-3" />
+                <span>Terdekat</span>
+              </div>
+              <div className="w-px h-3 bg-gray-300"></div>
+              <div className="flex items-center gap-1.5">
+                <Icons.ShieldCheck className="text-red-500 w-3 h-3" />
+                <span>Random</span>
+              </div>
+              <div className="w-px h-3 bg-gray-300"></div>
+              <div className="flex items-center gap-1.5">
+                <Icons.Price className="text-red-500 w-3 h-3" />
+                <span>Standar</span>
+              </div>
+            </div>
 
+          </div>
           {/* RESULTS HEADER */}
           <div className="flex flex-col gap-2 mb-4">
             <div className="flex items-end justify-between">
