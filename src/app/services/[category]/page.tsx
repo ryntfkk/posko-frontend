@@ -86,6 +86,59 @@ const Icons = {
   )
 };
 
+// [NEW] Imports for Service List
+import { fetchServices } from '@/features/services/api';
+import { Service } from '@/features/services/types';
+
+// [NEW] Service List Component
+function ServiceListSection({ categoryParam }: { categoryParam: string }) {
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const res = await fetchServices(categoryParam); // Fetch by category slug
+        if (res && res.data) {
+          setServices(res.data);
+        }
+      } catch (err) {
+        console.error("Gagal load services:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (categoryParam) loadServices();
+  }, [categoryParam]);
+
+  if (isLoading) return <div className="h-24 animate-pulse bg-gray-50 rounded-xl w-full border border-dashed border-gray-200"></div>;
+  if (services.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+      {services.map((svc) => (
+        <button
+          key={svc._id}
+          onClick={() => router.push(`/services/${categoryParam}/${svc._id}`)}
+          className="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 bg-white hover:border-red-100 hover:shadow-md transition-all text-center group h-full"
+        >
+          <div className="w-10 h-10 relative bg-gray-50 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+            {svc.iconUrl ? (
+              <Image src={svc.iconUrl} alt={svc.name} fill className="object-cover p-1.5" />
+            ) : (
+              <span className="text-[10px] font-bold text-gray-400">IMG</span>
+            )}
+          </div>
+          <span className="text-[10px] sm:text-xs font-medium text-gray-700 leading-tight line-clamp-2 group-hover:text-red-600">
+            {svc.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ServiceCategoryPage() {
   const router = useRouter();
   const params = useParams();
@@ -405,6 +458,12 @@ export default function ServiceCategoryPage() {
                 <span>Harga Standar</span>
               </div>
             </div>
+          </div>
+
+          {/* [BARU] LIST LAYANAN SPECIFIC */}
+          <div className="mt-4 mb-2">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">Layanan Spesifik</h3>
+            <ServiceListSection categoryParam={categoryParam} />
           </div>
 
           {/* RESULTS HEADER */}

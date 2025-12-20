@@ -24,6 +24,7 @@ export interface FetchProvidersParams {
   sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
   limit?: number;
   page?: number;
+  serviceId?: string; // [BARU] Filter by specific Service ID
 }
 
 export const fetchProviders = async (params: FetchProvidersParams) => {

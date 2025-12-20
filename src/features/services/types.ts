@@ -16,14 +16,14 @@ export interface Service {
   _id: string;
   name: string;
   slug?: string;
-  
+
   // [UPDATE] Mengubah dari string tunggal menjadi Array Kategori
   // Backend mengirim array object karena populate, bukan sekedar string ID
-  categories: Category[]; 
-  
+  categories: Category[];
+
   shortDescription?: string;
   description: string;
-  
+
   // Harga & Satuan
   basePrice: number;
   maxPrice?: number;
@@ -33,35 +33,41 @@ export interface Service {
   priceDisplay?: string;     // Virtual dari backend
   displayPrice?: number;     // Virtual dari backend
   priceNote?: string;
-  
+
   // Promo
   isPromo?: boolean;
   promoPrice?: number;
   promoEndDate?: string;
   promoLabel?: string;
   discountPercent?: number;  // Virtual
-  
+
   // Durasi & Kuantitas
   estimatedDuration?: number;
   durationDisplay?: string;  // Virtual
   minQuantity?: number;
   maxQuantity?: number;
-  
+
   // Detail Layanan
   includes?: string[];
   excludes?: string[];
   requirements?: string[];
-  
+
   // Media
   iconUrl: string;
   thumbnailUrl?: string;
   images?: string[];
-  
+
+  // Statistik
+  totalOrders?: number;
   // Statistik
   totalOrders?: number;
   averageRating?: number;
   reviewCount?: number;
-  
+
+  // Custom Fields (Dynamic)
+  // Custom Fields (Dynamic)
+  sop?: { title: string; description: string }[]; // [UPDATE] SOP is object array
+
   // Config
   isFeatured?: boolean;
   isActive: boolean;
@@ -75,7 +81,7 @@ export interface ServiceResponse {
 // Helper functions
 export function getUnitLabel(unit: ServiceUnit, customLabel?: string): string {
   if (customLabel) return customLabel;
-  
+
   const labels: Record<ServiceUnit, string> = {
     'unit': 'per unit',
     'jam': 'per jam',
@@ -88,7 +94,7 @@ export function getUnitLabel(unit: ServiceUnit, customLabel?: string): string {
     'kendaraan': 'per kendaraan',
     'sesi': 'per sesi'
   };
-  
+
   return labels[unit] || 'per unit';
 }
 
@@ -105,6 +111,6 @@ export function getQuantityLabel(unit: ServiceUnit): string {
     'kendaraan': 'Kendaraan',
     'sesi': 'Sesi'
   };
-  
+
   return labels[unit] || 'Unit';
 }
