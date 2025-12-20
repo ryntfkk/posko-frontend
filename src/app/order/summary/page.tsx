@@ -100,6 +100,7 @@ function OrderSummaryContent() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string, discount: number } | null>(null);
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+  const [isValidationVisible, setIsValidationVisible] = useState(false);
 
   // State UI Toggle
   const [isContactEditMode, setIsContactEditMode] = useState(false);
@@ -535,8 +536,10 @@ function OrderSummaryContent() {
   };
 
   const handlePlaceOrderAndPay = async () => {
-    if (!selectedDate || !selectedSlotId) {
-      alert("Mohon pilih tanggal dan slot waktu kunjungan.");
+    setIsValidationVisible(true);
+
+    if (!selectedDate || !selectedSlotId || !selectedAddress || !orderLocation || orderLocation.coordinates[0] === 0 || !customerContact.phone.trim()) {
+      // Validasi UI akan muncul di bottom bar
       return;
     }
 
@@ -561,18 +564,8 @@ function OrderSummaryContent() {
       }
     }
 
-    if (!selectedAddress || !orderLocation || orderLocation.coordinates[0] === 0) {
-      alert("Mohon lengkapi alamat dan titik lokasi Anda.");
-      return;
-    }
-
     // [NEW] Validasi Phone Regex
     const cleanPhone = customerContact.phone.trim();
-    if (!cleanPhone) {
-      alert("Mohon isi nomor HP yang bisa dihubungi.");
-      setIsContactEditMode(true);
-      return;
-    }
     if (!PHONE_REGEX.test(cleanPhone)) {
       alert("❌ Format nomor telepon tidak valid. Gunakan 10-15 digit angka (cth: 08123456789).");
       setIsContactEditMode(true);
@@ -745,28 +738,28 @@ function OrderSummaryContent() {
 
         {/* BAGIAN 1: INFO PROVIDER / TIPE ORDER */}
         {checkoutType === 'direct' ? (
-          <section className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-red-600/5 rounded-bl-full -mr-2 -mt-2"></div>
+          <section className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-600/5 rounded-bl-full -mr-2 -mt-2"></div>
             <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center shrink-0 overflow-hidden relative border border-gray-200">
               {providerDetail?.userId?.profilePictureUrl ? (
                 <Image src={providerDetail.userId.profilePictureUrl} alt="Provider" fill className="object-cover" />
               ) : (
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               )}
             </div>
             <div className="relative z-10">
-              <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Direct Order</p>
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Direct Order</p>
               <h2 className="text-base font-bold text-gray-900">{providerDetail?.userId?.fullName || providerData.name}</h2>
               <p className="text-xs text-gray-500">Mitra Pilihan Anda</p>
             </div>
           </section>
         ) : (
-          <section className="bg-white p-4 rounded-2xl border border-blue-100 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          <section className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Regular Order</p>
+              <p className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Basic Order</p>
               <h2 className="text-base font-bold text-gray-900">Pencarian Mitra Otomatis</h2>
               <p className="text-xs text-gray-500">Kami akan mencarikan mitra terdekat untuk Anda.</p>
             </div>
@@ -1059,7 +1052,7 @@ function OrderSummaryContent() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
         <div className="max-w-3xl mx-auto">
           {/* Validation Warning */}
-          {(!selectedDate || !selectedSlotId || !selectedAddress || !customerContact.phone.trim()) && (
+          {isValidationVisible && (!selectedDate || !selectedSlotId || !selectedAddress || !customerContact.phone.trim()) && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 flex items-start gap-2 animate-in slide-in-from-bottom-2">
               <span className="text-lg">⚠️</span>
               <div className="text-xs text-yellow-800">
@@ -1077,8 +1070,8 @@ function OrderSummaryContent() {
           <button
             onClick={handlePlaceOrderAndPay}
             disabled={isProcessing}
-            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${isProcessing || !selectedAddress || !selectedDate || !selectedSlotId || !customerContact.phone.trim()
-              ? 'bg-gray-400 shadow-none' // Visually disabled but clickable (unless processing)
+            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${isProcessing
+              ? 'bg-gray-400 shadow-none'
               : 'bg-red-600 hover:bg-red-700 shadow-red-200'
               }`}
           >
