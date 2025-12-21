@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import Image from 'next/image';
 import api from '@/lib/axios';
 import { User } from '@/features/auth/types';
+import { useSocket } from '@/context/SocketContext';
 
 // --- ICONS ---
 const CloseIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>;
@@ -32,106 +32,62 @@ interface ChatRoom {
   updatedAt: string;
 }
 
-// --- HELPER SOCKET URL ---
-const getSocketUrl = () => {
-  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
-    return process.env.NEXT_PUBLIC_SOCKET_URL.trim();
-  }
-  
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    try {
-      const url = new URL(process.env.NEXT_PUBLIC_API_URL);
-      return url.origin; 
-    } catch (e) {
-      console.error('Invalid API URL in env', e);
-    }
-  }
-  return 'http://localhost:4000';
-};
-
 export default function ChatWidget({ user }: { user: User }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
-  // [PERBAIKAN] Socket Ref untuk mencegah double connection
-  const socketRef = useRef<Socket | null>(null);
+  // [FIX] Gunakan socket dari context, bukan buat instance baru
+  const { socket } = useSocket();
   
   const [isUnread, setIsUnread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const SOCKET_URL = getSocketUrl();
   const myId = user?._id || user?.userId;
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('posko_token') : null;
-    if (!token) return;
-
     // Load rooms
     api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
+  }, []);
 
-    // [PERBAIKAN] Cek apakah socket sudah ada
-    if (!socketRef.current) {
-        const newSocket = io(SOCKET_URL, { 
-          auth: { token },
-          path: '/socket.io',
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionAttempts: 5,
-          autoConnect: false // [PERBAIKAN] Matikan auto connect
-        });
+  // [FIX] Setup socket listener menggunakan socket dari context
+  useEffect(() => {
+    if (!socket) return;
 
-        newSocket.on('connect', () => {
-          // console.log('✅ ChatWidget Socket connected:', newSocket.id);
-        });
+    // Setup listener untuk receive_message
+    const handleReceiveMessage = (data: { roomId: string, message: Message }) => {
+      setRooms(prev => {
+        const roomIndex = prev.findIndex(r => r._id === data.roomId);
+        if (roomIndex === -1) return prev; 
 
-        newSocket.on('connect_error', (error) => {
-          console.warn('⚠️ ChatWidget Socket connection warning:', error.message);
-        });
+        const updatedRoom = { 
+            ...prev[roomIndex], 
+            messages: [...prev[roomIndex].messages, data.message],
+            updatedAt: new Date().toISOString()
+        };
+        const newRooms = [...prev];
+        newRooms.splice(roomIndex, 1);
+        newRooms.unshift(updatedRoom);
+        return newRooms;
+      });
 
-        newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
-          setRooms(prev => {
-            const roomIndex = prev.findIndex(r => r._id === data.roomId);
-            if (roomIndex === -1) return prev; 
-
-            const updatedRoom = { 
-                ...prev[roomIndex], 
-                messages: [...prev[roomIndex].messages, data.message],
-                updatedAt: new Date().toISOString()
-            };
-            const newRooms = [...prev];
-            newRooms.splice(roomIndex, 1);
-            newRooms.unshift(updatedRoom);
-            return newRooms;
-          });
-
-          setActiveRoom(current => {
-            if (current && current._id === data.roomId) {
-              return { ...current, messages: [...current.messages, data.message] };
-            }
-            if (!current || current._id !== data.roomId) setIsUnread(true);
-            return current;
-          });
-        });
-
-        socketRef.current = newSocket;
-    }
-
-    // [PERBAIKAN] Connect manual
-    const socket = socketRef.current;
-    if (socket && !socket.connected) {
-        socket.connect();
-    }
-
-    // Cleanup hanya saat komponen benar-benar unmount (navigasi halaman)
-    return () => { 
-        // Di React 18, cleanup sering dipanggil saat dev mode.
-        // Kita biarkan socket tetap hidup di ref selama sesi user aktif.
-        // Jika user logout, socket akan putus karena token invalid.
+      setActiveRoom(current => {
+        if (current && current._id === data.roomId) {
+          return { ...current, messages: [...current.messages, data.message] };
+        }
+        if (!current || current._id !== data.roomId) setIsUnread(true);
+        return current;
+      });
     };
-  }, [SOCKET_URL]);
+
+    socket.on('receive_message', handleReceiveMessage);
+
+    // Cleanup listener saat unmount
+    return () => {
+      socket.off('receive_message', handleReceiveMessage);
+    };
+  }, [socket]);
 
   useEffect(() => {
     if (isOpen && activeRoom) {
@@ -141,7 +97,6 @@ export default function ChatWidget({ user }: { user: User }) {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    const socket = socketRef.current;
     if (!newMessage.trim() || !activeRoom || !socket) return;
 
     socket.emit('send_message', {
@@ -155,7 +110,7 @@ export default function ChatWidget({ user }: { user: User }) {
     try {
         const res = await api.get(`/chat/${room._id}`);
         setActiveRoom(res.data.data);
-        socketRef.current?.emit('join_chat', room._id);
+        socket?.emit('join_chat', room._id);
     } catch (error) {
         console.error(error);
     }

@@ -121,8 +121,16 @@ api.interceptors.response.use(
           refreshToken = localStorage.getItem('posko_refresh_token');
         }
         
-        if (!refreshToken) {
+        // [FIX] Validasi refresh token sebelum dikirim
+        if (!refreshToken || refreshToken.trim() === '') {
           throw new Error('No refresh token available');
+        }
+
+        // [FIX] Validasi format JWT (harus memiliki 3 bagian dipisah titik)
+        const tokenParts = refreshToken.split('.');
+        if (tokenParts.length !== 3) {
+          console.error('[Auth] Invalid refresh token format');
+          throw new Error('Invalid refresh token format');
         }
 
         // Panggil endpoint refresh token menggunakan axios instance BARU (tanpa interceptor)
