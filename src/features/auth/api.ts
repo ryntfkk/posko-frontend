@@ -1,13 +1,13 @@
 // src/features/auth/api.ts
 import api from '@/lib/axios';
-import { 
-  AuthResponse, 
-  LoginPayload, 
-  ProfileResponse, 
+import {
+  AuthResponse,
+  LoginPayload,
+  ProfileResponse,
   RegisterPayload,
   PreRegisterResponse,
   VerifyPreOtpResponse,
-  RequestPhoneOtpResponse, 
+  RequestPhoneOtpResponse,
   VerifyPhoneOtpResponse,
   PublicUserProfileResponse // [NEW] Import tipe baru
 } from './types';
@@ -95,7 +95,7 @@ export const resetPassword = async (resetToken: string, newPassword: string) => 
 
 export const loginUser = async (credentials: LoginPayload) => {
   const response = await api.post<AuthResponse>('/auth/login', credentials);
-  
+
   if (response.data.data.tokens) {
     safeSetToken(response.data.data.tokens.accessToken);
     try {
@@ -104,14 +104,14 @@ export const loginUser = async (credentials: LoginPayload) => {
       console.error('Failed to save refresh token:', e);
     }
   }
-  
+
   return response.data;
 };
 
 export const registerUser = async (payload: RegisterPayload) => {
   // Payload sekarang wajib mengandung verificationToken (Email) & phoneVerificationToken (WA)
   const response = await api.post<AuthResponse>('/auth/register', payload);
-  
+
   // Karena registrasi sekarang langsung auto-login (verified di awal), kita simpan token
   if (response.data.data.tokens) {
     safeSetToken(response.data.data.tokens.accessToken);
@@ -121,14 +121,14 @@ export const registerUser = async (payload: RegisterPayload) => {
       console.error('Failed to save refresh token:', e);
     }
   }
-  
+
   return response.data;
 };
 
 // [DEPRECATED] Fungsi ini mungkin masih dipakai di page lain, biarkan dulu tapi tidak dipakai di flow baru
 export const verifyOtp = async (email: string, otp: string) => {
   const response = await api.post<AuthResponse>('/auth/verify-otp', { email, otp });
-  
+
   if (response.data.data.tokens) {
     safeSetToken(response.data.data.tokens.accessToken);
     try {
@@ -137,7 +137,7 @@ export const verifyOtp = async (email: string, otp: string) => {
       console.error('Failed to save refresh token:', e);
     }
   }
-  
+
   return response.data;
 };
 
@@ -165,13 +165,13 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     if (!refreshToken) return null;
 
     const response = await api.post<AuthResponse>('/auth/refresh-token', { refreshToken });
-    
+
     if (response.data.data.tokens) {
       safeSetToken(response.data.data.tokens.accessToken);
       localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
       return response.data.data.tokens.accessToken;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Failed to refresh token:', error);
@@ -191,11 +191,33 @@ export const logoutUser = async () => {
   }
 };
 
-export const logout = logoutUser; 
+export const logout = logoutUser;
 
 export const updateProfile = async (data: any) => {
-    const response = await api.put<ProfileResponse>('/auth/profile', data);
-    return response.data;
+  const response = await api.put<ProfileResponse>('/auth/profile', data);
+  return response.data;
+};
+
+// [SECURITY] Endpoints
+export const requestSecurityOTP = async () => {
+  const response = await api.post('/auth/security/request-otp');
+  return response.data;
+};
+export const verifySecurityOTP = async (otp: string) => {
+  const response = await api.post('/auth/security/verify-otp', { otp });
+  return response.data;
+};
+export const updatePasswordSecure = async (data: any) => {
+  const response = await api.put('/auth/security/password', data);
+  return response.data;
+};
+export const updateEmailSecure = async (data: any) => {
+  const response = await api.put('/auth/security/email', data);
+  return response.data;
+};
+export const updatePhoneSecure = async (data: any) => {
+  const response = await api.put('/auth/security/phone', data);
+  return response.data;
 };
 
 export const switchRole = async (role: string) => {

@@ -390,51 +390,60 @@ export default function ServiceCategoryPage() {
         {/* === CONTENT: SERVICES TAB (BASIC ORDER) === */}
         {viewMode === 'services' && (
           <div className="animate-fadeIn">
-            {/* COMPACT CARD (ASLI) */}
-            <div className="bg-white rounded-xl border border-red-100 shadow-sm overflow-hidden mb-5">
-              {/* Header Card */}
-              <div className="bg-gradient-to-r from-red-600 to-red-500 px-4 py-3 flex items-center justify-between shadow-sm relative z-10">
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/20 p-1.5 rounded-lg text-white backdrop-blur-sm">
-                    <Icons.Bolt className="w-4 h-4" />
+            {/* Penjelasan Basic Order - Section Menarik dengan Keuntungan (Compact) */}
+            <div className="bg-gradient-to-br from-red-50 via-white to-red-50 rounded-xl border border-red-100 shadow-sm p-4 mb-4">
+              {/* Header dengan Icon */}
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="bg-gradient-to-br from-red-600 to-red-500 p-2 rounded-lg shadow-sm">
+                  <Icons.Bolt className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-gray-900 leading-tight">Basic Order</h2>
+                  <p className="text-[10px] text-gray-600">Pemesanan Cepat & Otomatis</p>
+                </div>
+              </div>
+
+              {/* Penjelasan */}
+              <p className="text-xs text-gray-700 leading-relaxed mb-3">
+                Pilih jenis layanan di bawah untuk pemesanan cepat oleh sistem. Sistem akan otomatis mencari dan menugaskan teknisi terdekat yang tersedia untuk Anda.
+              </p>
+
+              {/* Keuntungan Basic Order */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="flex items-start gap-2 bg-white/60 rounded-lg p-2 border border-red-100">
+                  <div className="bg-red-100 p-1.5 rounded shrink-0">
+                    <Icons.MapPinSolid className="text-red-600 w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-white leading-none">Pesan Cepat</h2>
-                      <span className="bg-red-800/30 text-[9px] px-1.5 py-0.5 rounded text-white font-medium border border-white/10">Teknisi Random</span>
-                    </div>
-                    <p className="text-[10px] text-red-100 mt-0.5 font-medium opacity-90">{categoryDisplayName}</p>
+                    <h3 className="text-[11px] font-bold text-gray-900 mb-0.5">Teknisi Terdekat</h3>
+                    <p className="text-[9px] text-gray-600 leading-snug">Sistem otomatis mencari teknisi terdekat dari lokasi Anda</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Service List Component */}
-              <div className="bg-white py-3 px-4">
-                <ServiceListSection categoryParam={categoryParam} />
-              </div>
+                <div className="flex items-start gap-2 bg-white/60 rounded-lg p-2 border border-red-100">
+                  <div className="bg-red-100 p-1.5 rounded shrink-0">
+                    <Icons.ShieldCheck className="text-red-600 w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] font-bold text-gray-900 mb-0.5">Mitra Terverifikasi</h3>
+                    <p className="text-[9px] text-gray-600 leading-snug">Semua teknisi telah melalui proses verifikasi dan terpercaya</p>
+                  </div>
+                </div>
 
-              {/* Footer Advantages */}
-              <div className="bg-gray-50 border-t border-gray-100 px-4 py-2 flex items-center justify-between text-[10px] text-gray-500 font-medium">
-                <div className="flex items-center gap-1.5">
-                  <Icons.MapPinSolid className="text-red-500 w-3 h-3" />
-                  <span>Terdekat</span>
-                </div>
-                <div className="w-px h-3 bg-gray-300"></div>
-                <div className="flex items-center gap-1.5">
-                  <Icons.ShieldCheck className="text-red-500 w-3 h-3" />
-                  <span>Verified</span>
-                </div>
-                <div className="w-px h-3 bg-gray-300"></div>
-                <div className="flex items-center gap-1.5">
-                  <Icons.Price className="text-red-500 w-3 h-3" />
-                  <span>Standar Platform</span>
+                <div className="flex items-start gap-2 bg-white/60 rounded-lg p-2 border border-red-100">
+                  <div className="bg-red-100 p-1.5 rounded shrink-0">
+                    <Icons.Price className="text-red-600 w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] font-bold text-gray-900 mb-0.5">Harga Standar</h3>
+                    <p className="text-[9px] text-gray-600 leading-snug">Harga transparan sesuai standar platform, tidak ada biaya tersembunyi</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Pilih jenis layanan di atas untuk pemesanan cepat oleh sistem.
-            </p>
+            {/* Service List Component - Dikeluarkan dari card */}
+            <ServiceListSection categoryParam={categoryParam} />
           </div>
         )}
 
