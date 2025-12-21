@@ -34,6 +34,7 @@ export default function ServiceDetailPage() {
 
     // State
     const [service, setService] = useState<Service | null>(null);
+    const [relatedServices, setRelatedServices] = useState<Service[]>([]);
     const [recommendProviders, setRecommendProviders] = useState<Provider[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [userProfile, setUserProfile] = useState<User | null>(null);
@@ -69,6 +70,7 @@ export default function ServiceDetailPage() {
 
                 if (found) {
                     setService(found);
+                    setRelatedServices(sRes.data.filter(s => s._id !== serviceId));
 
                     // B. Load Providers offering this Service
                     // Use currentLocation if available
@@ -255,6 +257,33 @@ export default function ServiceDetailPage() {
                 </div>
 
             </main>
+
+            {/* RELATED SERVICES SECTION */}
+            {relatedServices.length > 0 && (
+                <section className="max-w-3xl mx-auto px-4 pb-8">
+                    <h3 className="text-sm font-bold text-gray-900 mb-4 px-1">Layanan Lainnya di Kategori Ini</h3>
+                    <div className="flex overflow-x-auto gap-3 pb-4 -mx-4 px-4 no-scrollbar scroll-smooth">
+                        {relatedServices.map((svc) => (
+                            <Link
+                                key={svc._id}
+                                href={`/services/${categoryParam}/${svc._id}`}
+                                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-gray-100 bg-white min-w-[100px] w-[100px] hover:border-red-100 hover:shadow-md transition-all text-center group shrink-0"
+                            >
+                                <div className="w-10 h-10 relative bg-gray-50 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                                    {svc.iconUrl ? (
+                                        <Image src={svc.iconUrl} alt={svc.name} fill className="object-cover p-1.5" />
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-gray-400">IMG</span>
+                                    )}
+                                </div>
+                                <span className="text-[10px] font-medium text-gray-700 leading-tight line-clamp-2 group-hover:text-red-600 h-8 flex items-center justify-center">
+                                    {svc.name}
+                                </span>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* FLOATING ACTION BOTTOM BAR */}
             <div className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 p-4 pb-6 z-30 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">

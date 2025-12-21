@@ -349,7 +349,7 @@ export default function ServiceCategoryPage() {
                   }`}
               >
                 <Icons.Users />
-                Pilih Mitra
+                Direct Order
               </button>
               <button
                 onClick={() => setViewMode('services')}
@@ -359,7 +359,7 @@ export default function ServiceCategoryPage() {
                   }`}
               >
                 <Icons.Grid />
-                Pilih Layanan
+                Basic Order
               </button>
             </div>
           </div>
@@ -400,7 +400,7 @@ export default function ServiceCategoryPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-bold text-white leading-none">Basic Order</h2>
+                      <h2 className="text-sm font-bold text-white leading-none">Pesan Cepat</h2>
                       <span className="bg-red-800/30 text-[9px] px-1.5 py-0.5 rounded text-white font-medium border border-white/10">Teknisi Random</span>
                     </div>
                     <p className="text-[10px] text-red-100 mt-0.5 font-medium opacity-90">{categoryDisplayName}</p>
