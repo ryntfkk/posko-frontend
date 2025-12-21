@@ -15,6 +15,8 @@ import useMidtrans from '@/hooks/useMidtrans';
 import { useSocket } from '@/context/SocketContext';
 import ReviewModal from '@/components/ReviewModal';
 import Receipt from '@/components/Receipt';
+import CreateTicketModal from '@/components/support/CreateTicketModal';
+import { getSupportTicketByOrder, createSupportTicket } from '@/features/support/api';
 import 'leaflet/dist/leaflet.css';
 
 // --- LEAFLET COMPONENTS (Client Only) ---
@@ -99,6 +101,7 @@ interface OrderDetailViewProps {
 
 export default function OrderDetailView({ orderId, isSideView = false }: OrderDetailViewProps) {
     const { socket } = useSocket();
+    const router = useRouter();
 
     const {
         data: orderData,
@@ -136,6 +139,11 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
     const [activeModal, setActiveModal] = useState<'cancel' | 'dispute' | null>(null);
     const [actionReason, setActionReason] = useState('');
     const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
+
+    // Support Ticket State
+    const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
+    const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+    const [hasActiveTicket, setHasActiveTicket] = useState(false);
 
     // Map & Realtime Driver State
     const [redIcon, setRedIcon] = useState<any>(null);
@@ -342,9 +350,85 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
         }
     };
 
-    const openSupportWA = () => {
-        const message = `Halo Admin Posko, saya butuh bantuan untuk Order ID: ${order?.orderNumber}`;
-        window.open(`https://wa.me/6281234567890?text=${encodeURIComponent(message)}`, '_blank');
+    // Check for existing support ticket
+    useEffect(() => {
+        if (order?._id) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:355', message: 'Checking existing ticket', data: { orderId: order._id }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+            // #endregion
+
+            getSupportTicketByOrder(order._id)
+                .then((response) => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:359', message: 'Ticket check result', data: { hasTicket: !!response.data, ticketStatus: response.data?.status, isActive: response.data && ['open', 'in_progress'].includes(response.data.status) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+                    // #endregion
+                    if (response.data && ['open', 'in_progress'].includes(response.data.status)) {
+                        setHasActiveTicket(true);
+                    } else {
+                        setHasActiveTicket(false);
+                    }
+                })
+                .catch((error) => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:366', message: 'Ticket check error', data: { error: error?.toString() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+                    // #endregion
+                    setHasActiveTicket(false);
+                });
+        }
+    }, [order?._id]);
+
+    const openSupportChat = async () => {
+        if (!order?._id) return;
+
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:371', message: 'openSupportChat called', data: { orderId: order._id, hasActiveTicket }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+        // #endregion
+
+        try {
+            // Cek apakah sudah ada ticket
+            const existingTicket = await getSupportTicketByOrder(order._id);
+
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:376', message: 'openSupportChat ticket check', data: { hasTicket: !!existingTicket.data, ticketStatus: existingTicket.data?.status }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+            // #endregion
+
+            if (existingTicket.data && ['open', 'in_progress'].includes(existingTicket.data.status)) {
+                // Redirect ke chat support yang sudah ada
+                router.push(`/support/${existingTicket.data._id}`);
+            } else {
+                // Buka modal untuk create ticket baru
+                setIsCreateTicketModalOpen(true);
+            }
+        } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'orders/components/OrderDetailView.tsx:387', message: 'openSupportChat error', data: { error: error?.toString() }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
+            // #endregion
+            // Jika error, buka modal create ticket
+            setIsCreateTicketModalOpen(true);
+        }
+    };
+
+    const handleCreateTicket = async (subject: string, initialMessage: string) => {
+        if (!order?._id) return;
+
+        setIsCreatingTicket(true);
+        try {
+            const response = await createSupportTicket({
+                orderId: order._id,
+                subject,
+                initialMessage
+            });
+
+            setIsCreateTicketModalOpen(false);
+            setHasActiveTicket(true);
+
+            // Redirect ke chat support
+            router.push(`/support/${response.data._id}`);
+        } catch (error: any) {
+            alert(error.response?.data?.message || 'Gagal membuat support ticket');
+        } finally {
+            setIsCreatingTicket(false);
+        }
     };
 
     const getStatusInfo = (status: OrderStatus) => {
@@ -425,8 +509,15 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
                                 Batalkan
                             </button>
                         )}
-                        <button onClick={openSupportWA} className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+                        <button
+                            onClick={openSupportChat}
+                            className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200 relative"
+                            title="Chat dengan Customer Service"
+                        >
                             <Icons.Help /> Bantuan
+                            {hasActiveTicket && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -445,8 +536,15 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
                                 Batalkan
                             </button>
                         )}
-                        <button onClick={openSupportWA} className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200">
+                        <button
+                            onClick={openSupportChat}
+                            className="text-[10px] font-bold text-gray-500 hover:text-red-600 flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border border-gray-200 relative"
+                            title="Chat dengan Customer Service"
+                        >
                             <Icons.Help /> Bantuan
+                            {hasActiveTicket && (
+                                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            )}
                         </button>
                     </div>
                 </div>
@@ -993,6 +1091,14 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
                 order={order}
                 isOpen={isReceiptOpen}
                 onClose={() => setIsReceiptOpen(false)}
+            />
+
+            <CreateTicketModal
+                isOpen={isCreateTicketModalOpen}
+                onClose={() => setIsCreateTicketModalOpen(false)}
+                onSubmit={handleCreateTicket}
+                isSubmitting={isCreatingTicket}
+                orderNumber={order?.orderNumber || ''}
             />
         </div>
     );
