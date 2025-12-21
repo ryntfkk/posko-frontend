@@ -84,6 +84,11 @@ export const useCart = () => {
     const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice' | 'id'>): boolean => {
         if (cart.length === 0) return false;
 
+        // Validasi quantity sebelum cek konflik
+        if (!newItem.quantity || newItem.quantity <= 0) {
+            return true; // Quantity invalid dianggap conflict
+        }
+
         // Ambil sample item pertama dari cart yang ada
         const existingSample = cart[0];
 
@@ -100,13 +105,36 @@ export const useCart = () => {
             }
         }
 
+        // 3. Cek Duplicate ServiceId (Prevent duplicate items dengan service sama)
+        // Jika serviceId sama dengan item yang sudah ada di cart, itu bukan conflict tapi update
+        // Tapi jika serviceId berbeda dan orderType/providerId berbeda, itu conflict
+        const hasDuplicateService = cart.some(existing => 
+            existing.serviceId === newItem.serviceId && 
+            existing.orderType === newItem.orderType &&
+            (newItem.orderType === 'basic' || existing.providerId === newItem.providerId)
+        );
+        
+        // Duplicate serviceId dengan kondisi sama adalah OK (akan di-update)
+        // Tapi jika ada serviceId berbeda dengan orderType/providerId berbeda, itu conflict
+        // Logic di atas sudah handle ini dengan cek orderType dan providerId terlebih dahulu
+
         return false;
     }, [cart]);
 
     // [ACTION] Update atau Tambah Item
     const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice' | 'id'>) => {
+        // Validasi quantity sebelum proses
+        if (!item.quantity || item.quantity <= 0) {
+            console.warn('[Cart] Invalid quantity:', item.quantity);
+            return; // Jangan update jika quantity invalid
+        }
+
         // Validasi konflik sebelum update state (Extra safety)
         // Idealnya UI sudah memanggil checkConflict sebelumnya
+        if (checkConflict(item)) {
+            console.warn('[Cart] Conflict detected, item not added:', item);
+            return; // Jangan update jika ada conflict
+        }
 
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
 
@@ -162,7 +190,7 @@ export const useCart = () => {
 
             return [...prevCart, newItem];
         });
-    }, []);
+    }, [checkConflict]);
 
     // [ACTION] Reset Cart dan Tambah Item Baru (Replace Cart)
     const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice' | 'id'>) => {

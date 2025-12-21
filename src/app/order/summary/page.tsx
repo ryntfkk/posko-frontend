@@ -8,7 +8,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 import { useCart } from '@/features/cart/useCart';
-import { createOrder } from '@/features/orders/api';
+import { createOrder, cancelOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api';
 import { CreateOrderPayload, CustomerContact, PropertyDetails, Attachment } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
@@ -625,13 +625,16 @@ function OrderSummaryContent() {
       };
 
       console.log("1. Membuat Order...", orderPayload);
+      let orderId: string | null = null;
+      let orderNumber: string | null = null;
+      
       const orderRes = await createOrder(orderPayload);
 
       // [FIX] Mengambil data ID dan Number dengan benar dari struktur response Axios (createOrder masih return AxiosResponse)
       // Response backend: { message: "...", data: { _id: "...", orderNumber: "..." } }
       const orderData = orderRes.data.data;
-      const orderId = orderData._id;
-      const orderNumber = orderData.orderNumber;
+      orderId = orderData._id;
+      orderNumber = orderData.orderNumber;
 
       console.log("2. Meminta Token Pembayaran...", { orderId });
 
@@ -639,46 +642,75 @@ function OrderSummaryContent() {
         throw new Error("Gagal mendapatkan Order ID dari server.");
       }
 
-      // [FIX CRITICAL] createPayment di api.ts mengembalikan response.data langsung (sudah unwrapped)
-      const paymentRes = await createPayment(orderId);
+      // [ROLLBACK MECHANISM] Jika createPayment gagal, cancel order yang sudah dibuat
+      try {
+        // [FIX CRITICAL] createPayment di api.ts mengembalikan response.data langsung (sudah unwrapped)
+        const paymentRes = await createPayment(orderId);
 
-      // [FIX] Karena sudah unwrapped, strukturnya langsung { message: '...', data: { snapToken: '...' } }
-      const paymentData = paymentRes.data;
-      const snapToken = paymentData.snapToken;
+        // [FIX] Karena sudah unwrapped, strukturnya langsung { message: '...', data: { snapToken: '...' } }
+        const paymentData = paymentRes.data;
+        const snapToken = paymentData.snapToken;
 
-      console.log("3. Membuka Snap Midtrans...", { snapToken });
-      if (!snapToken) {
-        throw new Error("Gagal mendapatkan Snap Token dari server pembayaran.");
-      }
+        console.log("3. Membuka Snap Midtrans...", { snapToken });
+        if (!snapToken) {
+          throw new Error("Gagal mendapatkan Snap Token dari server pembayaran.");
+        }
 
-      if (window.snap) {
-        window.snap.pay(snapToken, {
-          onSuccess: (result) => {
-            console.log('✅ Pembayaran Berhasil:', result);
-            alert(`Pembayaran Berhasil! Order: ${orderNumber}`);
-            clearCart();
-            router.push('/orders');
-          },
-          onPending: (result) => {
-            console.log('⏳ Menunggu Pembayaran:', result);
-            alert(`Menunggu pembayaran untuk order ${orderNumber}...`);
-            router.push(`/orders/${orderId}`);
-          },
-          onError: (result) => {
-            console.error('❌ Gagal Bayar:', result);
-            alert('Pembayaran gagal. Silakan coba lagi dari halaman detail order.');
-            router.push(`/orders/${orderId}`);
-          },
-          onClose: () => {
-            console.log('📦 Popup Ditutup. Order tersimpan.');
-            router.push(`/orders/${orderId}`);
+        if (window.snap) {
+          window.snap.pay(snapToken, {
+            onSuccess: (result) => {
+              console.log('✅ Pembayaran Berhasil:', result);
+              alert(`Pembayaran Berhasil! Order: ${orderNumber}`);
+              clearCart();
+              router.push('/orders');
+            },
+            onPending: (result) => {
+              console.log('⏳ Menunggu Pembayaran:', result);
+              alert(`Menunggu pembayaran untuk order ${orderNumber}...`);
+              router.push(`/orders/${orderId}`);
+            },
+            onError: (result) => {
+              console.error('❌ Gagal Bayar:', result);
+              alert('Pembayaran gagal. Silakan coba lagi dari halaman detail order.');
+              router.push(`/orders/${orderId}`);
+            },
+            onClose: () => {
+              console.log('📦 Popup Ditutup. Order tersimpan.');
+              router.push(`/orders/${orderId}`);
+            }
+          });
+        }
+      } catch (paymentError: any) {
+        // [ROLLBACK] Jika createPayment gagal setelah createOrder sukses, cancel order
+        console.error("❌ Error saat membuat payment:", paymentError);
+        
+        if (orderId) {
+          try {
+            console.log(`[ROLLBACK] Membatalkan order ${orderId} karena payment gagal...`);
+            await cancelOrder(orderId, 'Pembayaran gagal dibuat - rollback otomatis');
+            console.log(`[ROLLBACK] Order ${orderId} berhasil dibatalkan`);
+          } catch (cancelError: any) {
+            console.error(`[ROLLBACK] Gagal membatalkan order ${orderId}:`, cancelError);
+            // Tetap lanjutkan untuk menunjukkan error payment ke user
           }
-        });
+        }
+        
+        throw paymentError; // Re-throw untuk ditangani di catch block utama
       }
 
     } catch (error: any) {
       console.error("❌ Error saat membuat order:", error);
-      alert(error.response?.data?.message || error.message || 'Terjadi kesalahan.');
+      
+      // Tampilkan pesan error yang lebih informatif
+      const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat memproses pesanan.';
+      
+      // Jika order sudah dibuat tapi payment gagal, beri tahu user untuk cek order mereka
+      if (orderId) {
+        alert(`${errorMessage}\n\nOrder #${orderNumber || orderId} telah dibuat. Silakan cek halaman order untuk mencoba pembayaran ulang.`);
+        router.push(`/orders/${orderId}`);
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setIsProcessing(false);
     }
