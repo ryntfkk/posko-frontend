@@ -403,11 +403,6 @@ export default function ServiceCategoryPage() {
                 </div>
               </div>
 
-              {/* Penjelasan */}
-              <p className="text-xs text-gray-700 leading-relaxed mb-3">
-                Pilih jenis layanan di bawah untuk pemesanan cepat oleh sistem. Sistem akan otomatis mencari dan menugaskan teknisi terdekat yang tersedia untuk Anda.
-              </p>
-
               {/* Keuntungan Basic Order */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div className="flex items-start gap-2 bg-white/60 rounded-lg p-2 border border-red-100">
@@ -436,7 +431,7 @@ export default function ServiceCategoryPage() {
                   </div>
                   <div>
                     <h3 className="text-[11px] font-bold text-gray-900 mb-0.5">Harga Standar</h3>
-                    <p className="text-[9px] text-gray-600 leading-snug">Harga transparan sesuai standar platform, tidak ada biaya tersembunyi</p>
+                    <p className="text-[9px] text-gray-600 leading-snug">Harga transparan sesuai standar platform</p>
                   </div>
                 </div>
               </div>
