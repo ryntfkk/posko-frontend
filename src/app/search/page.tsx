@@ -379,7 +379,7 @@ function SearchContent() {
                                     {distanceStr && (
                                     <>
                                         <span className="shrink-0">•</span>
-                                        <span className="shrink-0 text-gray-500 font-medium">{distanceStr}km</span>
+                                        <span className="shrink-0 text-gray-500 font-medium">{distanceStr} km</span>
                                     </>
                                     )}
                                 </div>

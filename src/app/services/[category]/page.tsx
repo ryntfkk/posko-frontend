@@ -603,9 +603,14 @@ export default function ServiceCategoryPage() {
                     return 'Lokasi Mitra';
                   };
 
+                  // Link ke Profil
+                  const profileLink = prov.userId?.username
+                    ? `/u/${prov.userId.username}`
+                    : `/u/${prov.userId._id}`;
+
                   return (
                     <Link
-                      href={`/u/${prov.userId.username || prov.userId._id}`}
+                      href={profileLink}
                       key={prov._id}
                       className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col w-full group hover:shadow-md hover:border-red-100 transition-all duration-300 h-full"
                     >
