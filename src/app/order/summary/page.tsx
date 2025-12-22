@@ -581,16 +581,14 @@ function OrderSummaryContent() {
 
     try {
       const mainItem = activeCartItems[0];
-      const discountVal = appliedPromo?.discount || 0;
-      const finalAmount = Math.max(0, currentTotalAmount + adminFee - discountVal);
 
-      // [CRITICAL UPDATE] Menambahkan adminFee dan discountAmount ke payload
+      // [SECURITY UPDATE] Backend akan menghitung semua nilai finansial
+      // totalAmount, adminFee, dan discountAmount TIDAK DIKIRIM lagi
+      // Backend akan recalculate dari items dan voucherCode untuk keamanan
       const orderPayload: any = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
-        totalAmount: finalAmount,
-        adminFee: adminFee, // [NEW] Kirim Admin Fee
-        discountAmount: discountVal, // [NEW] Kirim Discount Amount
+        // Removed: totalAmount, adminFee, discountAmount (backend will calculate)
 
         scheduledAt: scheduledAtISO,
         shippingAddress: selectedAddress,
@@ -627,7 +625,7 @@ function OrderSummaryContent() {
       console.log("1. Membuat Order...", orderPayload);
       let orderId: string | null = null;
       let orderNumber: string | null = null;
-      
+
       const orderRes = await createOrder(orderPayload);
 
       // [FIX] Mengambil data ID dan Number dengan benar dari struktur response Axios (createOrder masih return AxiosResponse)
@@ -683,7 +681,7 @@ function OrderSummaryContent() {
       } catch (paymentError: any) {
         // [ROLLBACK] Jika createPayment gagal setelah createOrder sukses, cancel order
         console.error("❌ Error saat membuat payment:", paymentError);
-        
+
         if (orderId) {
           try {
             console.log(`[ROLLBACK] Membatalkan order ${orderId} karena payment gagal...`);
@@ -694,16 +692,16 @@ function OrderSummaryContent() {
             // Tetap lanjutkan untuk menunjukkan error payment ke user
           }
         }
-        
+
         throw paymentError; // Re-throw untuk ditangani di catch block utama
       }
 
     } catch (error: any) {
       console.error("❌ Error saat membuat order:", error);
-      
+
       // Tampilkan pesan error yang lebih informatif
       const errorMessage = error.response?.data?.message || error.message || 'Terjadi kesalahan saat memproses pesanan.';
-      
+
       // Jika order sudah dibuat tapi payment gagal, beri tahu user untuk cek order mereka
       if (orderId) {
         alert(`${errorMessage}\n\nOrder #${orderNumber || orderId} telah dibuat. Silakan cek halaman order untuk mencoba pembayaran ulang.`);
