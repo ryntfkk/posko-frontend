@@ -39,6 +39,31 @@ export const createOrder = (data: CreateOrderPayload) => {
   });
 };
 
+// [NEW] Preview Order - Get price calculation before creating order
+export const previewOrder = (data: {
+  items: { serviceId: string; quantity: number }[];
+  voucherCode?: string;
+  orderType: 'direct' | 'basic';
+  providerId?: string;
+}) => {
+  return api.post<{
+    message: string;
+    data: {
+      subtotal: number;
+      adminFee: number;
+      discount: number;
+      total: number;
+      voucherApplied: {
+        code: string;
+        type: string;
+        value: number;
+        eligibleTotal: number;
+      } | null;
+      breakdown: any;
+    };
+  }>('/orders/preview', data);
+};
+
 // List Orders dengan Pagination
 export const listOrders = (view: 'customer' | 'provider' = 'customer', page = 1, limit = 10, search?: string) => {
   let url = `/orders?view=${view}&page=${page}&limit=${limit}`;

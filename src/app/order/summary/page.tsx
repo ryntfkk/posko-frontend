@@ -8,7 +8,7 @@ import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 import { useCart } from '@/features/cart/useCart';
-import { createOrder, cancelOrder } from '@/features/orders/api';
+import { createOrder, cancelOrder, previewOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api';
 import { CreateOrderPayload, CustomerContact, PropertyDetails, Attachment } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
@@ -100,6 +100,15 @@ function OrderSummaryContent() {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string, discount: number } | null>(null);
   const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
+
+  // [NEW] State for Preview Price from Backend
+  const [pricePreview, setPricePreview] = useState<{
+    subtotal: number;
+    adminFee: number;
+    discount: number;
+    total: number;
+  } | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isValidationVisible, setIsValidationVisible] = useState(false);
 
   // State UI Toggle
@@ -307,6 +316,37 @@ function OrderSummaryContent() {
       coordinates: [lng, lat]
     });
   }, []);
+
+
+  // [NEW] Fetch Price Preview
+  useEffect(() => {
+    const fetchPreview = async () => {
+      if (activeCartItems.length === 0) {
+        setPricePreview(null);
+        return;
+      }
+      setIsLoadingPreview(true);
+      try {
+        const response = await previewOrder({
+          items: activeCartItems.map(item => ({
+            serviceId: item.serviceId,
+            quantity: item.quantity
+          })),
+          voucherCode: appliedPromo?.code,
+          orderType: checkoutType,
+          providerId: activeCartItems[0].providerId
+        });
+        setPricePreview(response.data.data);
+      } catch (error) {
+        console.error('Preview error:', error);
+        setPricePreview(null);
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    };
+    fetchPreview();
+  }, [activeCartItems, appliedPromo?.code]);
+
 
   // Handler Simpan Alamat (Modal)
   const handleSaveAddress = async () => {
