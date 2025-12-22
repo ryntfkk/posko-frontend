@@ -579,6 +579,10 @@ function OrderSummaryContent() {
 
     setIsProcessing(true);
 
+    // [FIX] Move orderId and orderNumber outside try block for callback access
+    let orderId: string | null = null;
+    let orderNumber: string | null = null;
+
     try {
       const mainItem = activeCartItems[0];
 
@@ -623,8 +627,6 @@ function OrderSummaryContent() {
       };
 
       console.log("1. Membuat Order...", orderPayload);
-      let orderId: string | null = null;
-      let orderNumber: string | null = null;
 
       const orderRes = await createOrder(orderPayload);
 
