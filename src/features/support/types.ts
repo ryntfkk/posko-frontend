@@ -35,3 +35,4 @@ export interface CreateSupportTicketRequest {
   subject: string;
   initialMessage?: string;
 }
+
