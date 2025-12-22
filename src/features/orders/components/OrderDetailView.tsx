@@ -362,6 +362,7 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
                     }
                 })
                 .catch((error) => {
+                    // 404 is expected when no ticket exists, no need to log
                     setHasActiveTicket(false);
                 });
         }
@@ -382,7 +383,7 @@ export default function OrderDetailView({ orderId, isSideView = false }: OrderDe
                 setIsCreateTicketModalOpen(true);
             }
         } catch (error) {
-            // Jika error, buka modal create ticket
+            // 404 is expected when no ticket exists - open create ticket modal
             setIsCreateTicketModalOpen(true);
         }
     };
