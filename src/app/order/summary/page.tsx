@@ -18,6 +18,7 @@ import { User, Address, GeoLocation } from '@/features/auth/types';
 // Import API Provider & Types
 import { fetchProviderById } from '@/features/providers/api';
 import { Provider } from '@/features/providers/types';
+import api from '@/lib/axios';
 
 // Import API & Types Settings & Vouchers
 import { settingsApi } from '@/features/settings/api';
@@ -589,7 +590,7 @@ function OrderSummaryContent() {
     const scheduledDateTime = new Date(`${selectedDate}T${selectedSlot.start}:00`);
     const scheduledAtISO = scheduledDateTime.toISOString();
 
-    // [NEW] Validasi Lead Time saat Submit
+    // [FRONTEND] Lead Time validation for UX (instant feedback)
     const timeValidation = isDateUnavailable(selectedDate, selectedSlot.start);
     if (timeValidation.unavailable) {
       alert(`❌ ${timeValidation.reason}`);
@@ -602,6 +603,24 @@ function OrderSummaryContent() {
         alert(`❌ ${validation.reason}. Silakan pilih tanggal lain.`);
         return;
       }
+    }
+
+    // [NEW] SERVER-SIDE schedule validation (Security - Cannot be bypassed)
+    try {
+      const scheduleValidation = await api.post('/orders/validate-schedule', {
+        providerId: checkoutType === 'direct' ? selectedProviderId : null,
+        scheduledAt: scheduledAtISO,
+        slotStart: selectedSlot.start
+      });
+
+      if (!scheduleValidation.data?.data?.valid) {
+        alert(`❌ ${scheduleValidation.data?.data?.reason || 'Jadwal tidak valid'}`);
+        return;
+      }
+    } catch (error: any) {
+      console.error('[VALIDATION] Schedule validation failed:', error);
+      alert(`❌ ${error.response?.data?.message || 'Gagal memvalidasi jadwal. Silakan coba lagi.'}`);
+      return;
     }
 
     // [NEW] Validasi Phone Regex
