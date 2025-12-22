@@ -9,11 +9,9 @@ export const createOrder = (data: CreateOrderPayload) => {
   // Append data JSON fields
   formData.append('providerId', data.providerId || '');
   formData.append('orderType', data.orderType);
-  formData.append('totalAmount', data.totalAmount.toString());
 
-  // [FIX] Append Admin Fee & Discount agar Backend menyimpan data keuangan yang akurat
-  if (data.adminFee) formData.append('adminFee', data.adminFee.toString());
-  if (data.discountAmount) formData.append('discountAmount', data.discountAmount.toString());
+  // [REMOVED] totalAmount, adminFee, discountAmount - backend will calculate these
+  // Backend recalculates all financial values from items + voucherCode for security
 
   formData.append('scheduledAt', data.scheduledAt);
   formData.append('orderNote', data.orderNote || '');
