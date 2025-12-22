@@ -63,9 +63,6 @@ export default function SupportChat({ ticket, chatRoom, currentUser, socket, ord
     // Join chat room on mount
     useEffect(() => {
         if (socket && chatRoom?._id) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/support/SupportChat.tsx:64',message:'Joining chat room from SupportChat',data:{roomId:chatRoom._id,socketConnected:socket.connected},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             socket.emit('join_chat', chatRoom._id);
         }
     }, [socket, chatRoom?._id]);
@@ -151,11 +148,11 @@ export default function SupportChat({ ticket, chatRoom, currentUser, socket, ord
                         {getStatusLabel(ticket.status)}
                     </span>
                 </div>
-                
+
                 {/* Order Info */}
                 {order && (
                     <div className="mt-2 pt-2 border-t border-gray-100">
-                        <Link 
+                        <Link
                             href={`/orders/${order._id}`}
                             className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
                         >

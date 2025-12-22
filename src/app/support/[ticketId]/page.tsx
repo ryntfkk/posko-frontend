@@ -79,21 +79,13 @@ export default function SupportDetailPage() {
 
                 newSocket.on('connect_error', (err) => {
                     console.error('Socket connection error:', err.message);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:80',message:'Socket connect error',data:{error:err.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
                 });
 
                 newSocket.on('connect', () => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:84',message:'Socket connected',data:{socketId:newSocket.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
+                    console.log('Socket connected:', newSocket.id);
                 });
 
                 newSocket.on('receive_message', (data: { roomId: string; message: any }) => {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:91',message:'Received message',data:{roomId:data.roomId,currentChatRoomId:chatRoom?._id,matches:data.roomId===chatRoom?._id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
                     if (chatRoom && data.roomId === chatRoom._id) {
                         setChatRoom(prev => prev ? {
                             ...prev,
@@ -105,9 +97,6 @@ export default function SupportDetailPage() {
                 setSocket(newSocket);
             } catch (error) {
                 console.error('Init error:', error);
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:97',message:'Init error',data:{error:error?.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
             }
         };
 
@@ -121,10 +110,6 @@ export default function SupportDetailPage() {
     // Load chat room when ticket is loaded
     useEffect(() => {
         if (ticket && ticket.chatRoomId) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:107',message:'Loading chat room',data:{ticketId:ticket._id,chatRoomId:ticket.chatRoomId,socketReady:!!socket},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
-            
             const loadChatRoom = async () => {
                 try {
                     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/chat/${ticket.chatRoomId}`, {
@@ -133,23 +118,14 @@ export default function SupportDetailPage() {
                         }
                     });
                     const data = await response.json();
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:116',message:'Chat room loaded',data:{chatRoomId:data.data?._id,messagesCount:data.data?.messages?.length||0,hasMessages:!!data.data?.messages},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
                     setChatRoom(data.data);
-                    
+
                     // Join chat room after loading
                     if (socket && data.data?._id) {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:122',message:'Joining chat room',data:{roomId:data.data._id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                        // #endregion
                         socket.emit('join_chat', data.data._id);
                     }
                 } catch (error) {
                     console.error('Failed to load chat room:', error);
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/b5c4354d-7ec8-4b1e-8e61-b118b04e13c3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'support/[ticketId]/page.tsx:127',message:'Failed to load chat room',data:{error:error?.toString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
                 }
             };
             loadChatRoom();
