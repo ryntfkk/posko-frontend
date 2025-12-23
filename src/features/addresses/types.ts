@@ -35,8 +35,12 @@ export interface CreateAddressPayload {
   city: string;
   province: string;
   postalCode: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  location?: {
+    type: 'Point';
+    coordinates: [number, number]; // [lng, lat]
+  };
   isDefault?: boolean;
 }
 
