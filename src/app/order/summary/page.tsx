@@ -14,6 +14,7 @@ import { CreateOrderPayload, CustomerContact, PropertyDetails, Attachment } from
 import useMidtrans from '@/hooks/useMidtrans';
 import { fetchProfile, updateProfile } from '@/features/auth/api';
 import { User, Address, GeoLocation } from '@/features/auth/types';
+import { getDefaultAddress } from '@/features/addresses/api';
 
 // Import API Provider & Types
 import { fetchProviderById } from '@/features/providers/api';
@@ -277,12 +278,22 @@ function OrderSummaryContent() {
         const profile = profileRes.data.profile;
         setUserProfile(profile);
 
-        if ((profile as any).address) {
-          setSelectedAddress((profile as any).address);
-          setTempAddress((profile as any).address);
+        // [UPDATE] Load default address from Address API instead of profile
+        const defaultAddress = await getDefaultAddress();
+        if (defaultAddress) {
+          const addressObj = {
+            province: defaultAddress.province,
+            city: defaultAddress.city,
+            district: defaultAddress.district || '',
+            village: defaultAddress.village || '',
+            postalCode: defaultAddress.postalCode,
+            detail: defaultAddress.detail
+          };
+          setSelectedAddress(addressObj);
+          setTempAddress(addressObj);
         }
-        if ((profile as any).location && (profile as any).location.coordinates && (profile as any).location.coordinates[0] !== 0) {
-          setOrderLocation((profile as any).location);
+        if (defaultAddress?.location && defaultAddress.location.coordinates && defaultAddress.location.coordinates[0] !== 0) {
+          setOrderLocation(defaultAddress.location);
         }
 
         setCustomerContact({

@@ -58,7 +58,8 @@ export default function ProfileHeroSection({
           displayLocation = 'Lokasi Mitra belum diatur';
       }
   } else {
-      displayLocation = user.address?.city || 'Kota tidak tersedia';
+      // [UPDATE] Use defaultAddress from Address collection instead of user.address
+      displayLocation = (user as any).defaultAddress?.city || 'Kota tidak tersedia';
   }
 
   return (

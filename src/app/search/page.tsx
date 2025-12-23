@@ -292,8 +292,9 @@ function SearchContent() {
                     let distanceStr = null;
                     if (prov.distance) {
                         distanceStr = (prov.distance / 1000).toFixed(1);
-                    } else if (userProfile?.location?.coordinates && prov.userId?.location?.coordinates) {
-                        const [userLng, userLat] = userProfile.location.coordinates;
+                    } else if ((userProfile as any)?.defaultLocation?.coordinates && prov.userId?.location?.coordinates) {
+                        // [UPDATE] Use defaultLocation from Address collection
+                        const [userLng, userLat] = (userProfile as any).defaultLocation.coordinates;
                         const provLng = prov.userId.location.coordinates[0];
                         const provLat = prov.userId.location.coordinates[1];
                         distanceStr = calculateDistance(userLat, userLng, provLat, provLng);

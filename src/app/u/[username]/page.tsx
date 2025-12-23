@@ -104,9 +104,13 @@ export default function PublicProfilePage() {
 
   // Calculate Distance
   useEffect(() => {
-    if (user && user.location?.coordinates && currentUser?.location?.coordinates) {
-      const [uLng, uLat] = currentUser.location.coordinates;
-      const [targetLng, targetLat] = user.location.coordinates;
+    // [UPDATE] Use defaultLocation from Address collection instead of user.location
+    const currentUserLocation = (currentUser as any)?.defaultLocation?.coordinates;
+    const targetUserLocation = (user as any)?.defaultLocation?.coordinates;
+    
+    if (currentUserLocation && targetUserLocation) {
+      const [uLng, uLat] = currentUserLocation;
+      const [targetLng, targetLat] = targetUserLocation;
 
       setDistance(uLat === 0 ? 'Set Alamat' : calculateDistance(uLat, uLng, targetLat, targetLng));
     }

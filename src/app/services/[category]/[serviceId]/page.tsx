@@ -46,8 +46,9 @@ export default function ServiceDetailPage() {
             try {
                 const res = await fetchProfile();
                 setUserProfile(res.data.profile);
-                if (res.data.profile.location?.coordinates) {
-                    const [lng, lat] = res.data.profile.location.coordinates;
+                // [UPDATE] Use defaultLocation from Address collection instead of profile.location
+                if ((res.data.profile as any).defaultLocation?.coordinates) {
+                    const [lng, lat] = (res.data.profile as any).defaultLocation.coordinates;
                     if (lat !== 0 || lng !== 0) setCurrentLocation({ lat, lng });
                 }
             } catch (e) {

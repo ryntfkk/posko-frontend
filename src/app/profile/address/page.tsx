@@ -71,28 +71,26 @@ export default function AddressPage() {
           setProvinces(provRes.data);
         }
 
-        // Fetch User Profile
-        const profileRes = await fetchProfile();
-        const user = profileRes.data.profile;
+        // [UPDATE] Fetch default address from Address API instead of user profile
+        const { getDefaultAddress } = await import('@/features/addresses/api');
+        const defaultAddress = await getDefaultAddress();
 
-        if (user) {
+        if (defaultAddress) {
           // Set Alamat Text
-          if (user.address) {
-            setFormData({
-              province: user.address.province || '',
-              city: user.address.city || '',
-              district: user.address.district || '',
-              village: user.address.village || '',
-              postalCode: user.address.postalCode || '',
-              detail: user.address.detail || ''
-            });
-          }
+          setFormData({
+            province: defaultAddress.province || '',
+            city: defaultAddress.city || '',
+            district: defaultAddress.district || '',
+            village: defaultAddress.village || '',
+            postalCode: defaultAddress.postalCode || '',
+            detail: defaultAddress.detail || ''
+          });
 
           // Set Koordinat (GeoJSON: [long, lat])
-          if (user.location && user.location.coordinates && Array.isArray(user.location.coordinates)) {
+          if (defaultAddress.location && defaultAddress.location.coordinates && Array.isArray(defaultAddress.location.coordinates)) {
             setCoordinates({
-              lng: user.location.coordinates[0],
-              lat: user.location.coordinates[1]
+              lng: defaultAddress.location.coordinates[0],
+              lat: defaultAddress.location.coordinates[1]
             });
           }
         }

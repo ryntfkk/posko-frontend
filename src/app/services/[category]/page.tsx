@@ -210,16 +210,27 @@ export default function ServiceCategoryPage() {
     loadUserProfile();
   }, []);
 
-  // Sync Profile Location
+  // [UPDATE] Sync Location from Default Address instead of user profile
   useEffect(() => {
-    if (userProfile?.location?.coordinates) {
-      const [lng, lat] = userProfile.location.coordinates;
-      if (lat !== 0 || lng !== 0) {
-        setCurrentLocation({ lat, lng });
-        setLocationSource('prop');
+    const loadDefaultAddress = async () => {
+      try {
+        const { getDefaultAddress } = await import('@/features/addresses/api');
+        const defaultAddress = await getDefaultAddress();
+        if (defaultAddress?.location?.coordinates) {
+          const [lng, lat] = defaultAddress.location.coordinates;
+          if (lat !== 0 || lng !== 0) {
+            setCurrentLocation({ lat, lng });
+            setLocationSource('prop');
+          }
+        }
+      } catch (error) {
+        console.error("Gagal memuat default address:", error);
       }
+    };
+    if (isProfileLoaded) {
+      loadDefaultAddress();
     }
-  }, [userProfile]);
+  }, [isProfileLoaded]);
 
   // GPS Handler
   const handleUseMyLocation = () => {
