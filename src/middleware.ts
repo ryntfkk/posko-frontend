@@ -22,7 +22,7 @@ const PUBLIC_ROUTES = [
 ];
 
 // Routes yang memerlukan login
-const PROTECTED_ROUTES = ['/orders', '/checkout', '/chat', '/profile'];
+const PROTECTED_ROUTES = ['/orders', '/checkout', '/chat', '/profile', '/notifications'];
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;

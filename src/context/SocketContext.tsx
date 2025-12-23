@@ -94,15 +94,21 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             queryClient.invalidateQueries({ queryKey: ['order', data.orderId] });
             queryClient.invalidateQueries({ queryKey: ['incoming-orders'] }); // Untuk Mitra
 
-            // 2. Tampilkan Notifikasi Sederhana (Browser Alert / Custom Toast)
+            // 2. Refresh Notifications (karena order update biasanya menghasilkan notifikasi)
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+
+            // 3. Tampilkan Notifikasi Sederhana (Browser Alert / Custom Toast)
             // Karena kita belum pasang library Toast, kita pakai Notification API native
-            if (Notification.permission === 'granted') {
-                new Notification(`Update Pesanan #${data.order?.orderNumber || ''}`, {
-                    body: data.message,
-                    icon: '/icons/logo-posko.png' // Pastikan icon ada atau hapus baris ini
-                });
-            } else if (Notification.permission !== 'denied') {
-                Notification.requestPermission();
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(`Update Pesanan #${data.order?.orderNumber || ''}`, {
+                        body: data.message,
+                        icon: '/icons/logo-posko.png' // Pastikan icon ada atau hapus baris ini
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
             }
 
             // Opsional: Alert visual jika user sedang membuka aplikasi
@@ -117,10 +123,39 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
             // Refresh List Chat
             queryClient.invalidateQueries({ queryKey: ['chats'] });
             
-            if (Notification.permission === 'granted') {
-                new Notification(`Pesan dari ${data.senderName}`, {
-                    body: data.content
-                });
+            // Refresh Notifications
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+            
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(`Pesan dari ${data.senderName}`, {
+                        body: data.content
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
+            }
+        });
+
+        // C. General Notification Event (untuk notifikasi dari backend)
+        newSocket.on('notification:new', (data: any) => {
+            console.log('[Socket] New Notification Received:', data);
+            
+            // Refresh Notifications List & Count
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
+            queryClient.invalidateQueries({ queryKey: ['notification-unread-count'] });
+            
+            // Show browser notification if permission granted
+            if (typeof window !== 'undefined' && 'Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification(data.title || 'Notifikasi Baru', {
+                        body: data.message || '',
+                        icon: '/icons/logo-posko.png'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
             }
         });
 
