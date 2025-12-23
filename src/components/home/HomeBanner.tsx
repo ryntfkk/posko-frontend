@@ -64,7 +64,7 @@ export default function HomeBanner() {
   if (isLoading) {
     return (
       <section className="px-4 lg:px-8 mt-4 lg:mt-6 max-w-7xl mx-auto">
-        <div className="w-full aspect-[2.5/1] lg:aspect-[3.5/1] bg-gray-200 rounded-xl animate-pulse"></div>
+        <div className="w-full aspect-[3/1] bg-gray-200 rounded-xl animate-pulse"></div>
       </section>
     );
   }
@@ -74,20 +74,19 @@ export default function HomeBanner() {
 
   return (
     <section className="px-4 lg:px-8 mt-4 lg:mt-6 max-w-7xl mx-auto">
-      <div className="relative w-full aspect-[2.5/1] lg:aspect-[3.5/1] rounded-2xl overflow-hidden shadow-sm group">
-        
+      <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden shadow-sm group">
+
         {/* Slides Container */}
         {banners.map((banner, index) => (
           <div
             key={banner._id}
-            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
           >
             {/* Wrapper Image agar bisa di-klik jika ada link */}
             {banner.linkUrl ? (
               <Link href={banner.linkUrl} className="block w-full h-full relative">
-                 <Image
+                <Image
                   src={banner.imageUrl}
                   alt={banner.title || 'Promo Banner'}
                   fill
@@ -108,13 +107,13 @@ export default function HomeBanner() {
                 />
               </div>
             )}
-            
+
             {/* Optional Overlay Text (Jika ada title) */}
             {(banner.title || banner.description) && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-4 lg:p-8">
-                    {banner.title && <h3 className="text-white font-bold text-lg lg:text-2xl">{banner.title}</h3>}
-                    {banner.description && <p className="text-white/90 text-xs lg:text-sm mt-1 max-w-lg">{banner.description}</p>}
-                </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-4 lg:p-8">
+                {banner.title && <h3 className="text-white font-bold text-lg lg:text-2xl">{banner.title}</h3>}
+                {banner.description && <p className="text-white/90 text-xs lg:text-sm mt-1 max-w-lg">{banner.description}</p>}
+              </div>
             )}
           </div>
         ))}
@@ -126,9 +125,8 @@ export default function HomeBanner() {
               <button
                 key={idx}
                 onClick={() => handleManualChange(idx)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  idx === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
-                }`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/50 hover:bg-white/80'
+                  }`}
                 aria-label={`Go to slide ${idx + 1}`}
               />
             ))}
