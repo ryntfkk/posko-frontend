@@ -17,6 +17,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Posko - Jasa Terdekat",
   description: "Aplikasi penyedia jasa profesional terdekat",
+  icons: {
+    icon: '/icon.png', // Mengarah ke public/logo.png
+  },
 };
 
 export default function RootLayout({
