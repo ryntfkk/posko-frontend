@@ -3,7 +3,18 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronRight, Scale, AlertCircle, FileText, ShieldCheck, Clock, CreditCard } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ChevronRight, 
+  Scale, 
+  AlertCircle, 
+  FileText, 
+  ShieldCheck, 
+  Clock, 
+  CreditCard, 
+  Siren,        // Icon baru untuk CSAE
+  Users         // Icon baru untuk UGC
+} from 'lucide-react';
 
 // --- CONTENT DATA (Structured for density) ---
 const TERMS_SECTIONS = [
@@ -32,6 +43,57 @@ const TERMS_SECTIONS = [
     )
   },
   {
+    id: 'csae',
+    title: 'Perlindungan Anak (CSAE)',
+    icon: <Siren className="w-3.5 h-3.5 text-red-600" />, // Highlight icon merah
+    content: (
+      <div className="space-y-3">
+        <div className="p-3 bg-red-50 border border-red-100 rounded text-red-900 text-xs font-medium">
+          <strong>ZERO TOLERANCE POLICY:</strong> Posko menerapkan kebijakan toleransi nol terhadap segala bentuk Kekerasan dan Eksploitasi Seksual Anak.
+        </div>
+        <p>
+          Kami melarang keras penggunaan layanan kami untuk memposting, membagikan, atau memfasilitasi konten yang berkaitan dengan Pelecehan Seksual dan Eksploitasi terhadap Anak (Child Sexual Abuse and Exploitation / CSAE).
+        </p>
+        <p>Tindakan yang dilarang keras mencakup, namun tidak terbatas pada:</p>
+        <ul className="list-disc pl-4 space-y-1 marker:text-red-500">
+          <li><strong>Grooming (Pembujuk-rayuan):</strong> Upaya membangun kepercayaan dengan anak untuk tujuan eksploitasi seksual.</li>
+          <li><strong>Sextortion (Pemerasan Seksual):</strong> Mengancam untuk menyebarkan konten seksual anak guna memeras korban.</li>
+          <li><strong>Perdagangan Anak:</strong> Perdagangan anak untuk tujuan seksual atau kerja paksa.</li>
+          <li><strong>Konten Eksploitatif:</strong> Menyimpan, mendistribusikan, atau memproduksi materi pelecehan seksual anak (CSAM).</li>
+        </ul>
+        <p className="text-xs text-gray-500 italic mt-2">
+          Setiap pelanggaran terkait CSAE akan kami laporkan langsung ke <strong>NCMEC (National Center for Missing & Exploited Children)</strong> dan Penegak Hukum setempat (Kepolisian). Akun akan diblokir permanen tanpa peringatan.
+        </p>
+      </div>
+    )
+  },
+  {
+    id: 'ugc',
+    title: 'Pedoman Konten & Moderasi',
+    icon: <Users className="w-3.5 h-3.5" />,
+    content: (
+      <>
+        <p>
+          Mengingat fitur chat dan interaksi dalam aplikasi, Pengguna wajib mematuhi standar komunitas (UGC Policy). Kami berhak menghapus konten dan menangguhkan akun yang melanggar:
+        </p>
+        <ol className="list-decimal pl-4 mt-2 space-y-1.5 marker:text-gray-500">
+          <li>
+            <strong>Ujaran Kebencian:</strong> Konten yang mempromosikan kekerasan atau diskriminasi berdasarkan ras, agama, disabilitas, usia, orientasi seksual, atau identitas gender.
+          </li>
+          <li>
+            <strong>Pelecehan & Intimidasi:</strong> Tindakan bullying, doxing, atau pengancaman terhadap Mitra maupun pengguna lain.
+          </li>
+          <li>
+            <strong>Aktivitas Ilegal:</strong> Promosi perjudian, obat-obatan terlarang, atau tindakan kriminal lainnya.
+          </li>
+        </ol>
+        <div className="mt-3 p-2.5 bg-gray-50 rounded border border-gray-100 text-xs">
+          <span className="font-bold text-gray-800">Mekanisme Pelaporan:</span> Pengguna dapat melaporkan pelanggaran melalui fitur "Report" di dalam chat atau menghubungi support. Tim kami akan meninjau laporan dalam waktu 24 jam.
+        </div>
+      </>
+    )
+  },
+  {
     id: 'orders',
     title: 'Pemesanan & Pembatalan',
     icon: <Clock className="w-3.5 h-3.5" />,
@@ -46,10 +108,6 @@ const TERMS_SECTIONS = [
           <li>
             <strong className="text-gray-900 block text-xs uppercase tracking-wide">Biaya Pembatalan</strong>
             Pembatalan gratis jika status masih "Menunggu Konfirmasi". Jika Mitra sudah dalam perjalanan, dikenakan biaya kompensasi sebesar <strong>Rp15.000</strong>.
-          </li>
-          <li>
-            <strong className="text-gray-900 block text-xs uppercase tracking-wide">Penolakan Pesanan</strong>
-            Mitra berhak menolak pesanan jika lokasi tidak aman, tidak sesuai deskripsi, atau di luar cakupan keahlian.
           </li>
         </ul>
       </>
@@ -96,13 +154,13 @@ const TERMS_SECTIONS = [
   },
   {
     id: 'prohibitions',
-    title: 'Larangan',
+    title: 'Larangan Lainnya',
     icon: <AlertCircle className="w-3.5 h-3.5" />,
     content: (
       <p>
         Pengguna dilarang keras untuk: (a) Melakukan transaksi di luar aplikasi dengan Mitra Posko (Bypassing); 
-        (b) Melakukan pelecehan verbal atau fisik terhadap Mitra; 
-        (c) Menggunakan layanan untuk tujuan ilegal. Pelanggaran dapat mengakibatkan pemblokiran akun permanen.
+        (b) Mencoba meretas, memodifikasi, atau mengakses source code aplikasi; 
+        (c) Menggunakan akun palsu atau identitas orang lain.
       </p>
     )
   }
@@ -244,7 +302,7 @@ export default function TermsPage() {
             {/* Footer Closure */}
             <div className="mt-12 pt-6 border-t border-gray-100 pl-7">
               <p className="text-[11px] text-gray-400 leading-relaxed text-justify">
-                PT Posko Solusi Indonesia berhak untuk mengubah, memodifikasi, menambah, atau menghapus bagian dari Syarat dan Ketentuan ini sewaktu-waktu tanpa pemberitahuan sebelumnya. Pengguna disarankan untuk memeriksa halaman ini secara berkala. Penggunaan layanan yang berkelanjutan setelah perubahan dianggap sebagai persetujuan terhadap perubahan tersebut.
+                Posko berhak untuk mengubah, memodifikasi, menambah, atau menghapus bagian dari Syarat dan Ketentuan ini sewaktu-waktu tanpa pemberitahuan sebelumnya. Pengguna disarankan untuk memeriksa halaman ini secara berkala. Penggunaan layanan yang berkelanjutan setelah perubahan dianggap sebagai persetujuan terhadap perubahan tersebut.
               </p>
             </div>
           </article>
