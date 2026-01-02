@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search, Bell, LogOut, ExternalLink, Menu, X } from "lucide-react";
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
-import { PROFILE_MENU_ITEMS } from '@/config/navigation';
+import { PROFILE_MENU_ITEMS, MAIN_NAV_ITEMS } from '@/config/navigation';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useUnreadCount } from '@/features/notifications/useNotifications';
 
@@ -53,6 +53,18 @@ export default function Header() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+  // [NEW] STATE UNTUK MENGATASI HYDRATION MISMATCH DAN FLICKERING AUTH BUTTON
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // [NEW] LOGIC VISIBILITAS SEARCH BAR (FIX UX ISSUE)
+  // Hanya tampilkan search bar mobile di halaman Home, Search, dan kategori Services
+  // Tidak akan muncul di halaman Chat, Profile, Detail Order, dll.
+  const showMobileSearch = ['/', '/search'].includes(pathname) || pathname.startsWith('/services');
 
   // Sembunyikan header pada halaman Auth
   const isAuthPage = ['/login', '/register', '/forgot-password'].includes(pathname);
@@ -97,7 +109,12 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
-          {isLoggedIn ? (
+          
+          {/* [FIX] LOADING STATE HANDLING PADA MOBILE */}
+          {/* Jika belum mounted (SSR) atau sedang loading data user, tampilkan Skeleton */}
+          {!isMounted || isLoading ? (
+             <div className="w-7 h-7 rounded-full bg-gray-200 animate-pulse" />
+          ) : isLoggedIn ? (
             <Link href="/profile">
               <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative active:scale-95 transition-transform">
                 <Image
@@ -117,16 +134,18 @@ export default function Header() {
         </div>
       </div>
 
-      {/* --- MOBILE SEARCH BAR (STICKY) --- */}
-      {/* Search bar ini sekarang muncul di SEMUA halaman mobile (bukan hanya Home) untuk konsistensi aksesibilitas */}
-      <div className="lg:hidden px-4 py-2 bg-white sticky top-[48px] z-20 border-b border-gray-100 shadow-sm">
-        <GlobalSearchInput 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onSubmit={handleSearchSubmit}
-          placeholder={t('home.searchPlaceholder')}
-        />
-      </div>
+      {/* --- MOBILE SEARCH BAR (STICKY & CONDITIONAL) --- */}
+      {/* [FIX] Search bar sekarang hanya muncul di halaman yang relevan sesuai logika showMobileSearch */}
+      {showMobileSearch && (
+        <div className="lg:hidden px-4 py-2 bg-white sticky top-[48px] z-20 border-b border-gray-100 shadow-sm animate-fadeIn">
+          <GlobalSearchInput 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onSubmit={handleSearchSubmit}
+            placeholder={t('home.searchPlaceholder')}
+          />
+        </div>
+      )}
 
       {/* --- DESKTOP HEADER --- */}
       <header className="hidden lg:block sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
@@ -144,11 +163,22 @@ export default function Header() {
               </div>
               <span className="text-xl font-black text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
             </Link>
+            
+            {/* [FIX] MENGGUNAKAN MAIN_NAV_ITEMS AGAR KONSISTEN ONE SOURCE OF TRUTH */}
             <nav className="flex gap-6 text-sm font-bold text-gray-600">
-              <Link href="/" className={`hover:text-red-600 transition-colors ${pathname === '/' ? 'text-red-600' : ''}`}>{t('nav.home')}</Link>
-              <Link href="/orders" className={`hover:text-red-600 transition-colors ${pathname === '/orders' ? 'text-red-600' : ''}`}>{t('nav.orders')}</Link>
-              {/* [NEW] Menambahkan Chat Link di Desktop agar konsisten dengan Mobile */}
-              <Link href="/chat" className={`hover:text-red-600 transition-colors ${pathname.startsWith('/chat') ? 'text-red-600' : ''}`}>{t('nav.chat')}</Link>
+              {MAIN_NAV_ITEMS.map((item) => (
+                <Link 
+                  key={item.href}
+                  href={item.href} 
+                  className={`hover:text-red-600 transition-colors ${
+                    (item.href === '/' && pathname === '/') || (item.href !== '/' && pathname.startsWith(item.href))
+                      ? 'text-red-600' 
+                      : ''
+                  }`}
+                >
+                  {t(item.label)}
+                </Link>
+              ))}
             </nav>
           </div>
 
@@ -164,7 +194,14 @@ export default function Header() {
 
             <LanguageSwitcher />
 
-            {isLoggedIn ? (
+            {/* [FIX] LOADING STATE HANDLING PADA DESKTOP */}
+            {/* Mencegah tombol Login muncul sekejap saat user sebenarnya sudah login */}
+            {!isMounted || isLoading ? (
+              <div className="flex items-center gap-3">
+                 <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
+                 <div className="w-24 h-8 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+            ) : isLoggedIn ? (
               <div className="flex items-center gap-4">
                 
                 {/* [NEW] NOTIFICATION BELL (Desktop) */}
@@ -178,7 +215,7 @@ export default function Header() {
                 {/* PROFILE DROPDOWN */}
                 <div className="relative">
                   <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
-                    <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900 leading-tight">Halo, {isLoading ? '...' : profileName.split(' ')[0]}</p></div>
+                    <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900 leading-tight">Halo, {profileName.split(' ')[0]}</p></div>
                     <div className="w-8 h-8 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
                       <Image
                         src={profileAvatar}
@@ -215,6 +252,7 @@ export default function Header() {
                         <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
                           
                           {/* DYNAMIC MENU FROM CONFIG */}
+                          {/* [FIX] Memastikan Desktop User memiliki akses ke semua menu yang ada di Mobile */}
                           {PROFILE_MENU_ITEMS.map((section, idx) => (
                              <div key={idx} className={idx === 0 ? "px-2 pt-3 pb-1" : "px-2 py-2"}>
                                 {idx > 0 && <div className="h-px bg-gray-50 mx-2 mb-2"></div>}
@@ -235,7 +273,7 @@ export default function Header() {
 
                           <div className="h-px bg-gray-50 mx-4"></div>
 
-                          {/* SECTION: MITRA (REVISED - External Link) */}
+                          {/* SECTION: MITRA (External Link) */}
                           <div className="px-2 py-2">
                             <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Area Mitra</h3>
                             <a 

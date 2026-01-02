@@ -6,13 +6,17 @@ import {
   Shield,
   HelpCircle,
   FileText,
-  LogOut
+  Home,
+  MessageCircle,
+  Bell
 } from "lucide-react";
 
+// [UPDATED] ONE SOURCE OF TRUTH UNTUK NAVIGASI UTAMA (HEADER & BOTTOM NAV)
+// Digunakan untuk merender menu di Header Desktop agar konsisten
 export const MAIN_NAV_ITEMS = [
-  { label: 'nav.home', href: '/', showOnMobile: true, showOnDesktop: true },
-  { label: 'nav.search', href: '/search', showOnMobile: false, showOnDesktop: true },
-  { label: 'nav.orders', href: '/orders', showOnMobile: true, showOnDesktop: true },
+  { label: 'nav.home', href: '/', icon: Home },
+  { label: 'nav.orders', href: '/orders', icon: ClipboardList },
+  { label: 'nav.chat', href: '/chat', icon: MessageCircle },
 ];
 
 export const PROFILE_MENU_ITEMS = [
