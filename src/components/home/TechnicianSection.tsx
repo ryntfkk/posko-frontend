@@ -1,4 +1,3 @@
-// src/components/home/TechnicianSection.tsx
 'use client';
 
 import Image from 'next/image';
@@ -244,8 +243,8 @@ export default function TechnicianSection({ userLocation, addressLabel }: Techni
           </div>
         </div>
 
-        {/* LIST - Snap Scroll */}
-        <div className="flex gap-3 lg:gap-4 overflow-x-auto px-4 lg:px-8 pb-4 pt-1 no-scrollbar snap-x">
+        {/* [UPDATED] LIST - Mobile: Scroll Horizontal, Desktop: Grid System */}
+        <div className="flex gap-3 lg:gap-4 overflow-x-auto px-4 lg:px-8 pb-4 pt-1 no-scrollbar snap-x lg:grid lg:grid-cols-5 lg:overflow-visible">
           {providers.map((prov) => {
             let distanceStr = null;
             if (userLocation && prov.userId?.location?.coordinates) {
@@ -291,7 +290,7 @@ export default function TechnicianSection({ userLocation, addressLabel }: Techni
               <Link
                 href={profileLink}
                 key={prov._id}
-                className="snap-start bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden shrink-0 flex flex-col w-32 lg:w-48 group hover:shadow-md hover:border-red-100 transition-all duration-300"
+                className="snap-start bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden shrink-0 flex flex-col w-32 lg:w-full group hover:shadow-md hover:border-red-100 transition-all duration-300"
               >
                 {/* IMAGE AREA */}
                 <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
@@ -299,7 +298,6 @@ export default function TechnicianSection({ userLocation, addressLabel }: Techni
                     src={prov.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
                     alt={prov.userId?.fullName || 'Mitra'}
                     fill
-                    // [PERBAIKAN] Menambahkan properti sizes
                     sizes="(max-width: 640px) 128px, (max-width: 1024px) 192px, 256px"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
