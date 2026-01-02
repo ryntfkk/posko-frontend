@@ -11,7 +11,7 @@ import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 import { fetchServices } from '@/features/services/api';
 import { Service } from '@/features/services/types';
-import { calculateDistance } from '@/features/providers/components/utils';
+import { ProviderCard } from '@/features/providers/components';
 
 // --- HOOKS ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -36,58 +36,58 @@ const formatCompactPrice = (price: number) => {
 
 // --- ICONS (Original + New Tabs Icons) ---
 const Icons = {
-  Location: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Location: ({ className = "w-3 h-3" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
-  MapPinSolid: () => (
-    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+  MapPinSolid: ({ className = "w-3 h-3" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
     </svg>
   ),
-  Price: () => (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Price: ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
-  Search: () => (
-    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Search: ({ className = "w-4 h-4 text-gray-400" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
     </svg>
   ),
-  Bolt: () => (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Bolt: ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
     </svg>
   ),
-  ChevronLeft: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  ChevronLeft: ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
     </svg>
   ),
-  ChevronDown: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  ChevronDown: ({ className = "w-3 h-3" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
     </svg>
   ),
-  Check: () => (
-    <svg className="w-3 h-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Check: ({ className = "w-3 h-3 text-red-600" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
     </svg>
   ),
-  ShieldCheck: () => (
-    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+  ShieldCheck: ({ className = "w-3 h-3" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
   ),
   // New Icons for Tabs
-  Users: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Users: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
   ),
-  Grid: () => (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  Grid: ({ className = "w-4 h-4" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
     </svg>
   )
@@ -295,15 +295,8 @@ export default function ServiceCategoryPage() {
   };
 
   const calculateDistanceStr = (prov: Provider) => {
-    let distanceStr = null;
-    if (prov.distance) {
-      distanceStr = (prov.distance / 1000).toFixed(1) + ' km';
-    } else if (currentLocation && prov.userId?.location?.coordinates) {
-      const provLng = prov.userId.location.coordinates[0];
-      const provLat = prov.userId.location.coordinates[1];
-      distanceStr = calculateDistance(currentLocation.lat, currentLocation.lng, provLat, provLng) + ' km';
-    }
-    return distanceStr;
+    // Moved to ProviderCard but kept here if needed for other logic
+    return null;
   };
 
   const filterOptions = [
@@ -580,116 +573,14 @@ export default function ServiceCategoryPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5">
-                {providers.map((prov) => {
-                  const distanceStr = calculateDistanceStr(prov);
-
-                  // Sort services
-                  const sortedServices = [...(prov.services || [])].sort((a, b) => {
-                    const catA = a.serviceId?.category?.toLowerCase() || '';
-                    const catB = b.serviceId?.category?.toLowerCase() || '';
-                    if (catA === categoryParam && catB !== categoryParam) return -1;
-                    if (catA !== categoryParam && catB === categoryParam) return 1;
-                    return 0;
-                  });
-
-                  const activeServices = sortedServices.filter(s => s.isActive);
-                  const serviceNames = activeServices
-                    .filter(s => s.serviceId?.name)
-                    .map(s => s.serviceId.name)
-                    .slice(0, 2)
-                    .join(', ');
-
-                  const serviceDisplay = serviceNames || 'Belum mendaftar layanan';
-                  const getMinPrice = () => {
-                    if (activeServices.length === 0) return 0;
-                    return Math.min(...activeServices.map((s) => s.price || 0));
-                  };
-                  const minPrice = getMinPrice();
-
-                  const getLocationLabel = () => {
-                    const addr = prov.userId?.address;
-                    if (!addr) return 'Lokasi Mitra';
-                    if (addr.district) return `Kec. ${addr.district}`;
-                    if (addr.city) return addr.city;
-                    return 'Lokasi Mitra';
-                  };
-
-                  // Link ke Profil
-                  const profileLink = prov.userId?.username
-                    ? `/u/${prov.userId.username}`
-                    : `/u/${prov.userId._id}`;
-
-                  return (
-                    <Link
-                      href={profileLink}
-                      key={prov._id}
-                      className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col w-full group hover:shadow-md hover:border-red-100 transition-all duration-300 h-full"
-                    >
-                      {/* IMAGE AREA (Aspect 4:3) - RESTORED */}
-                      <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
-                        <Image
-                          src={prov.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
-                          alt={prov.userId?.fullName || 'Mitra'}
-                          fill
-                          sizes="(max-width: 768px) 50vw, 20vw"
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        {/* Rating Badge - RESTORED */}
-                        <div className="absolute bottom-1.5 left-1.5 z-20 flex items-center gap-0.5 bg-black/60 backdrop-blur-[2px] px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white border border-white/10">
-                          <span className='text-yellow-400 text-[8px]'>★</span>
-                          <span>{(prov.rating && prov.rating > 0) ? prov.rating.toFixed(1) : 'Baru'}</span>
-                        </div>
-                        {/* Online Dot - RESTORED */}
-                        {prov.isOnline && (
-                          <div className="absolute top-1.5 right-1.5 z-20 w-2 h-2 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
-                        )}
-                      </div>
-
-                      {/* CONTENT AREA - RESTORED */}
-                      <div className="p-2 flex flex-col flex-1 gap-0.5">
-                        <h4 className="font-bold text-xs text-gray-900 truncate leading-tight group-hover:text-red-600 transition-colors">
-                          {prov.userId?.fullName || 'Mitra Posko'}
-                        </h4>
-
-                        {/* Services Section */}
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <p className="text-[10px] text-gray-500 truncate w-full">
-                            {serviceDisplay}
-                            {activeServices.length > 2 && <span className="text-[9px] align-top ml-0.5">+</span>}
-                          </p>
-                        </div>
-
-                        {/* Location & Distance */}
-                        <div className="flex items-center gap-1 text-[9px] text-gray-400 leading-tight">
-                          <span className="truncate max-w-[60%]">{getLocationLabel()}</span>
-                          {distanceStr && (
-                            <>
-                              <span className="shrink-0">•</span>
-                              <span className="shrink-0 text-gray-500 font-medium">{distanceStr}</span>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="mt-auto pt-2 flex items-center justify-between">
-                          <div className="flex flex-col">
-                            <span className="text-[8px] text-gray-400 leading-none mb-0.5">Mulai</span>
-                            <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
-                              {minPrice > 0 ? formatCompactPrice(minPrice) : 'Hubungi'}
-                            </span>
-                          </div>
-                          {/* Action Icon */}
-                          <div className="w-5 h-5 rounded-full bg-red-50 text-red-400 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center transition-colors">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                {providers.map((prov) => (
+                  <ProviderCard
+                    key={prov._id}
+                    provider={prov}
+                    currentLocation={currentLocation}
+                    categoryParam={categoryParam}
+                  />
+                ))}
               </div>
             )}
           </div>

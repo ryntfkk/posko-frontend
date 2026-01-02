@@ -59,6 +59,12 @@ export const checkFavoriteStatus = async (providerId: string) => {
   return response.data;
 };
 
+// [BARU] Fetch list of favorited providers
+export const fetchFavorites = async () => {
+  const response = await api.get<{ data: Provider[] }>('/favorites/me');
+  return response.data;
+};
+
 export const createProvider = async (data: any) => {
   const response = await api.post('/providers', data);
   return response.data;

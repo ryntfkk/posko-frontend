@@ -12,6 +12,7 @@ export { default as ProviderNotFound } from './ProviderNotFound';
 export { default as ProviderCalendarModal } from './ProviderCalendarModal';
 export { default as ProviderServiceDetailModal } from './ProviderServiceDetailModal';
 export { default as ProviderImageLightbox } from './ProviderImageLightbox';
+export { default as ProviderCard } from './ProviderCard';
 
 // --- BAGIAN YANG SUDAH DIHAPUS ---
 // Jangan masukkan baris-baris di bawah ini lagi ke dalam file Anda:
