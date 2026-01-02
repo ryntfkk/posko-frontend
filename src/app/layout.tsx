@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google"; 
 import "./globals.css";
@@ -6,8 +5,8 @@ import "leaflet/dist/leaflet.css";
 import BottomNav from "@/components/BottomNav"; 
 import QueryProvider from "@/providers/QueryProvider";
 import { LanguageProvider } from "@/context/LanguageContext";
-// [UPDATE] Import SocketProvider
 import { SocketProvider } from "@/context/SocketContext";
+import Header from "@/components/layout/Header"; // IMPORT BARU
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
   title: "Posko - Jasa Terdekat",
   description: "Aplikasi penyedia jasa profesional terdekat",
   icons: {
-    icon: '/icon.png', // Mengarah ke public/logo.png
+    icon: '/icon.png',
   },
 };
 
@@ -34,10 +33,10 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <QueryProvider>
-          {/* [UPDATE] Wrap aplikasi dengan SocketProvider DI DALAM QueryProvider */}
-          {/* Karena SocketProvider menggunakan useQueryClient */}
           <SocketProvider>
             <LanguageProvider>
+              {/* HEADER GLOBAL: Konsisten di Desktop & Mobile */}
+              <Header />
               <main className="min-h-screen">
                 {children}
               </main>
