@@ -68,7 +68,7 @@ export default function PartnerGatheringPage() {
 
       {/* --- SECTION 1: HERO --- */}
       {/* Menggunakan konten dari halaman 1 PDF */}
-      <section className="relative pt-28 pb-16 lg:pt-40 lg:pb-24 overflow-hidden">
+      <section className="relative pt-10 pb-10 lg:pt-28 lg:pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:24px_24px] opacity-60 pointer-events-none" />
         <div className="hidden lg:block absolute top-0 right-0 w-[500px] h-[500px] bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -129,7 +129,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 2: THE PROBLEM (Page 2) --- */}
-      <section className="py-20 lg:py-32 bg-gray-50 overflow-hidden">
+      <section className="py-12 lg:py-20 bg-gray-50 overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
 
@@ -181,7 +181,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 3: THE SOLUTION (Page 3) --- */}
-      <section className="py-20 lg:py-32 bg-white">
+      <section className="py-12 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <RevealOnScroll className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -249,7 +249,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 4: FEATURES (Page 4) --- */}
-      <section className="py-20 bg-gray-900 text-white overflow-hidden relative">
+      <section className="py-12 bg-gray-900 text-white overflow-hidden relative">
         {/* Background Accents */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 opacity-20">
           <div className="absolute top-10 left-10 w-96 h-96 bg-red-600 rounded-full blur-[128px]" />
@@ -324,7 +324,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 5: RUKO DIGITAL (Page 5) --- */}
-      <section className="py-20 lg:py-32 bg-white">
+      <section className="py-12 lg:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
 
@@ -415,7 +415,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 6: BENEFITS SEASON 1 (Page 6) --- */}
-      <section className="py-20 bg-gray-50 border-y border-gray-100">
+      <section className="py-12 bg-gray-50 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <RevealOnScroll className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -458,7 +458,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 7: FEES & RISK FREE (Page 7 & 8) --- */}
-      <section className="py-20 lg:py-32 bg-gray-900 text-white overflow-hidden">
+      <section className="py-12 lg:py-20 bg-gray-900 text-white overflow-hidden">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
 
@@ -518,7 +518,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- SECTION 8: STEPS (Page 9) --- */}
-      <section className="py-20 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <RevealOnScroll className="text-center mb-16">
             <h2 className="text-3xl lg:text-5xl font-bold text-gray-900">
@@ -561,7 +561,7 @@ export default function PartnerGatheringPage() {
       </section>
 
       {/* --- CTA SECTION --- */}
-      <section className="py-24 bg-gray-50 border-t border-gray-200">
+      <section className="py-16 bg-gray-50 border-t border-gray-200">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <RevealOnScroll>
             <h2 className="text-4xl lg:text-6xl font-black text- -900 mb-8">
@@ -582,7 +582,7 @@ export default function PartnerGatheringPage() {
               </Link>
             </div>
             <p className="mt-8 text-sm text-gray-400">
-              Posko Indonesia 
+              Posko Indonesia
             </p>
           </RevealOnScroll>
         </div>
