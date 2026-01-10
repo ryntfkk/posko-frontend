@@ -224,7 +224,7 @@ export default function PartnerGatheringPage() {
                 <div className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-xl">2</div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">HP Anda Bunyi</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Order di Siarkan</h3>
                     <p className="text-gray-600">
                       Karena posisi Anda dekat (terbaca di peta aplikasi), pesanan itu masuk ke HP Anda secara real-time.
                     </p>
