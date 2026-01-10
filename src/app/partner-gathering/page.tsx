@@ -193,16 +193,46 @@ export default function PartnerGatheringPage() {
           </RevealOnScroll>
 
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* App Mockup */}
+            {/* Mockup Profil (Moved from Section 5) */}
             <RevealOnScroll className="flex justify-center bg-gray-50 rounded-[3rem] p-8 lg:p-12">
-              <div className="relative w-64 lg:w-72 aspect-[9/19] rounded-[2.5rem] border-[8px] border-gray-900 overflow-hidden shadow-2xl bg-white">
-                <Image
-                  src="/images/partner-gathering/app-mockup.png"
-                  alt="Aplikasi Posko Customer"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                />
+              <div className="relative mx-auto w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden p-4">
+                {/* Header Mockup */}
+                <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+                  <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
+                    <img src="/images/partner-gathering/rb.png" alt="Rina" width={64} height={64} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg">Rina Beauty</h4>
+                    <p className="text-sm text-gray-500">MUA & Nail Art</p>
+                    <div className="flex items-center gap-1 text-xs font-bold text-yellow-500 mt-1">
+                      <Star className="w-3 h-3 fill-current" /> 4.8 (33 Pesanan)
+                    </div>
+                  </div>
+                </div>
+                {/* Portfolio Mockup */}
+                <div className="space-y-3">
+                  <div className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-sm text-gray-800">Make Up Artist (MUA)</p>
+                        <p className="text-xs text-gray-500 mt-1">Jasa make up profesional...</p>
+                      </div>
+                      <span className="text-sm font-bold text-red-600">Rp 550.000</span>
+                    </div>
+                  </div>
+                  <div className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-sm text-gray-800">Nail Art Home</p>
+                        <p className="text-xs text-gray-500 mt-1">Layanan nail art di rumah...</p>
+                      </div>
+                      <span className="text-sm font-bold text-red-600">Rp 85.000</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <button className="w-full py-2 bg-red-600 text-white rounded-lg font-medium text-sm">Chat Mitra</button>
+                </div>
               </div>
             </RevealOnScroll>
 
@@ -328,46 +358,16 @@ export default function PartnerGatheringPage() {
         <div className="max-w-7xl mx-auto px-5 sm:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
 
-            {/* Mockup Profil (Left) */}
-            <RevealOnScroll className="order-2 lg:order-1 relative">
-              <div className="relative mx-auto w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden p-4">
-                {/* Header Mockup */}
-                <div className="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                  <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
-                    <img src="/images/partner-gathering/rb.png" alt="Rina" width={64} height={64} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg">Rina Beauty</h4>
-                    <p className="text-sm text-gray-500">MUA & Nail Art</p>
-                    <div className="flex items-center gap-1 text-xs font-bold text-yellow-500 mt-1">
-                      <Star className="w-3 h-3 fill-current" /> 4.8 (33 Pesanan)
-                    </div>
-                  </div>
-                </div>
-                {/* Portfolio Mockup */}
-                <div className="space-y-3">
-                  <div className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-sm text-gray-800">Make Up Artist (MUA)</p>
-                        <p className="text-xs text-gray-500 mt-1">Jasa make up profesional...</p>
-                      </div>
-                      <span className="text-sm font-bold text-red-600">Rp 550.000</span>
-                    </div>
-                  </div>
-                  <div className="p-3 border border-gray-100 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold text-sm text-gray-800">Nail Art Home</p>
-                        <p className="text-xs text-gray-500 mt-1">Layanan nail art di rumah...</p>
-                      </div>
-                      <span className="text-sm font-bold text-red-600">Rp 85.000</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-4 text-center">
-                  <button className="w-full py-2 bg-red-600 text-white rounded-lg font-medium text-sm">Chat Mitra</button>
-                </div>
+            {/* App Mockup (Moved from Section 3) */}
+            <RevealOnScroll className="order-2 lg:order-1 relative flex justify-center">
+              <div className="relative w-64 lg:w-72 aspect-[9/19] rounded-[2.5rem] border-[8px] border-gray-900 overflow-hidden shadow-2xl bg-white transform rotate-[-5deg] hover:rotate-0 transition-transform duration-500">
+                <Image
+                  src="/images/partner-gathering/app-mockup.png"
+                  alt="Aplikasi Posko Customer"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
               </div>
 
               {/* Decorative Arrow/Label */}
@@ -476,7 +476,7 @@ export default function PartnerGatheringPage() {
 
               <div className="space-y-6 text-gray-300">
                 <p className="text-lg">
-                  <span className="text-white font-bold">Mengapa ada potongan?</span> 
+                  <span className="text-white font-bold">Mengapa ada potongan?</span>
                 </p>
                 <p className="text-lg">
                   Kami menggunakan dana ini untuk beriklan agar pelanggan datang mencari Anda, biaya server 24 jam, dan operasional verifikasi.
