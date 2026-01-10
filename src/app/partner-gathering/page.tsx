@@ -476,7 +476,10 @@ export default function PartnerGatheringPage() {
 
               <div className="space-y-6 text-gray-300">
                 <p className="text-lg">
-                  <span className="text-white font-bold">Mengapa ada potongan?</span> Kami menggunakan dana ini untuk "membakar uang" beriklan agar pelanggan datang mencari Anda, biaya server 24 jam, dan operasional verifikasi.
+                  <span className="text-white font-bold">Mengapa ada potongan?</span> 
+                </p>
+                <p className="text-lg">
+                  Kami menggunakan dana ini untuk beriklan agar pelanggan datang mencari Anda, biaya server 24 jam, dan operasional verifikasi.
                 </p>
                 <div className="p-6 bg-gray-800 rounded-2xl border border-gray-700">
                   <h4 className="text-white font-bold mb-2">Logika Bisnis</h4>
