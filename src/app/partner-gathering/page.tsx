@@ -91,7 +91,7 @@ export default function PartnerGatheringPage() {
             </h1>
 
             <p className="animate-fade-in-up delay-100 text-base sm:text-lg text-gray-500 mb-8 max-w-xl mx-auto leading-relaxed">
-              Infrastruktur teknologi yang menghubungkan keahlian Anda dengan kebutuhan pasar yang masif dan mendesak di Semarang.
+              Infrastruktur teknologi yang menghubungkan keahlian Anda dengan kebutuhan pasar yang masif dan mendesak.
             </p>
 
             {/* Stats/Info Pills */}
@@ -135,14 +135,14 @@ export default function PartnerGatheringPage() {
 
             <RevealOnScroll className="order-2 lg:order-1">
               <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Pasar Jasa Saat Ini <span className="text-red-600">Terfragmentasi</span>
+                Akses Pasar yang <span className="text-red-600">Terputus</span>
               </h2>
               <div className="space-y-6 text-lg text-gray-600">
                 <p>
-                  Sering terjadi tawar-menawar yang tidak adil karena tidak adanya standar harga yang jelas.
+                  Ketiadaan Wadah untuk Menjual Jasa
                 </p>
                 <p>
-                  Di sisi lain, banyak tenaga ahli seperti Anda kesulitan memasarkan diri, sehingga potensi ekonomi Anda terhambat. Akses terhadap pelanggan menjadi terbatas.
+                  Masalah terbesar saat ini adalah ketiadaan platform terpadu, yang mengakibatkan akses penyedia jasa terhadap pelanggan menjadi sangat terbatas. Tanpa adanya wadah digital ini, banyak tenaga ahli kesulitan memasarkan diri mereka sendiri
                 </p>
                 <div className="pt-4 border-l-4 border-red-500 pl-6 bg-white py-4 pr-4 shadow-sm rounded-r-lg">
                   <p className="font-semibold text-gray-900 italic">
