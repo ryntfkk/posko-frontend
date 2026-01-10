@@ -283,7 +283,7 @@ export default function PartnerGatheringPage() {
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-400">
                   <Check className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  <span>Cocok untuk kerja cepat tanpa tawar-menawar</span>
+                  <span>Cocok untuk kerja cepat seperti service elektronik</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-400">
                   <Check className="w-5 h-5 text-red-500 flex-shrink-0" />
@@ -314,7 +314,7 @@ export default function PartnerGatheringPage() {
                 </li>
                 <li className="flex items-start gap-3 text-sm text-gray-400">
                   <Check className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  <span>Bangun reputasi dan brand pribadi</span>
+                  <span>Bangun reputasi dan brand pribadi ini cocok untuk Makeup Artist dan lain sebagainya</span>
                 </li>
               </ul>
             </RevealOnScroll>
@@ -422,7 +422,10 @@ export default function PartnerGatheringPage() {
               Keuntungan Join <span className="text-red-600">SEASON 1</span>
             </h2>
             <p className="text-gray-500 max-w-2xl mx-auto">
-              "The First Mover Advantage". Di dunia digital, timing adalah segalanya.
+              "The First Mover Advantage"
+            </p>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              Di dunia digital, timing adalah segalanya.
             </p>
           </RevealOnScroll>
 
