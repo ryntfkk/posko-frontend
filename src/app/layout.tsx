@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { LanguageProvider } from "@/context/LanguageContext";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,12 +27,10 @@ export default function RootLayout({
         className={`${inter.className} ${inter.variable} antialiased bg-gray-50 text-gray-900 pb-0`}
         suppressHydrationWarning={true}
       >
-        <LanguageProvider>
-          {/* HEADER GLOBAL: Removed to prevent duplicates. Added manually to pages. */}
-          <main className="min-h-screen">
-            {children}
-          </main>
-        </LanguageProvider>
+        {/* HEADER GLOBAL: Removed to prevent duplicates. Added manually to pages. */}
+        <main className="min-h-screen">
+          {children}
+        </main>
       </body>
     </html>
   );
