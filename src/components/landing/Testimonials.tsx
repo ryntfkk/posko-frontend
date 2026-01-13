@@ -2,27 +2,23 @@
 
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
-import Image from 'next/image';
 
 const testimonials = [
     {
         name: 'Budi Santoso',
         role: 'Pengusaha UMKM',
-        avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=100',
         content: 'Aplikasi ini sangat membantu bisnis saya. Mencari teknisi AC untuk kantor jadi sangat cepat dan transparan harganya.',
         rating: 5,
     },
     {
         name: 'Siti Aminah',
         role: 'Ibu Rumah Tangga',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100',
         content: 'Suka banget dengan fitur tracking-nya. Saya jadi tahu kapan tukang bersih-bersih akan sampai. Hasil kerjanya juga rapi.',
         rating: 5,
     },
     {
         name: 'Rian Pratama',
         role: 'Freelancer',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100',
         content: 'Fitur chat-nya responsif dan sistem pembayarannya aman. Tukangnya juga ramah-ramah dan profesional. Recommended!',
         rating: 4,
     },
@@ -61,13 +57,9 @@ export default function Testimonials() {
                             <p className="text-gray-700 italic mb-8 relative z-10">"{item.content}"</p>
 
                             <div className="flex items-center gap-4">
-                                <Image
-                                    src={item.avatar}
-                                    alt={item.name}
-                                    width={48}
-                                    height={48}
-                                    className="rounded-full object-cover"
-                                />
+                                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                    <span className="font-bold text-red-600 text-lg">{item.name.charAt(0)}</span>
+                                </div>
                                 <div>
                                     <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
                                     <p className="text-gray-500 text-xs">{item.role}</p>

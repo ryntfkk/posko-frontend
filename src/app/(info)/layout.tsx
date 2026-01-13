@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import Footer from '@/components/Footer'; 
+import Footer from '@/components/Footer';
 
 export default function InfoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,8 +26,8 @@ export default function InfoLayout({ children }: { children: React.ReactNode }) 
       {/* --- Sticky Header --- */}
       <header className="fixed top-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-md border-b border-gray-100 h-14 flex items-center justify-between px-4 lg:px-8 max-w-screen-2xl mx-auto w-full">
         <div className="flex items-center gap-3">
-          <Link 
-            href="/profile" // Bisa disesuaikan logic back-nya jika perlu
+          <Link
+            href="/"
             className="p-1.5 -ml-1.5 hover:bg-gray-50 rounded-full transition-colors text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="w-5 h-5" />

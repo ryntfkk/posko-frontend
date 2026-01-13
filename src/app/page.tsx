@@ -6,7 +6,6 @@ import Hero from '@/components/landing/Hero';
 import Features from '@/components/landing/Features';
 import Services from '@/components/landing/Services';
 import PartnerCTA from '@/components/landing/PartnerCTA';
-import Testimonials from '@/components/landing/Testimonials';
 import Footer from '@/components/Footer'; // Gunakan Footer asli aplikasi
 
 export default function LandingPage() {
@@ -17,7 +16,6 @@ export default function LandingPage() {
       <Features />
       <Services />
       <PartnerCTA />
-      <Testimonials />
       <Footer />
     </main>
   );

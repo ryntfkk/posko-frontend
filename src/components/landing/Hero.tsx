@@ -88,12 +88,12 @@ export default function Hero() {
                     <motion.div
                         animate={{ y: [0, -10, 0] }}
                         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute top-20 -left-12 bg-white p-3 rounded-xl shadow-xl border border-gray-100 z-20 flex items-center gap-3"
+                        className="absolute bottom-24 -left-2 bg-white p-3 rounded-xl shadow-xl border border-gray-100 z-20 flex items-center gap-3"
                     >
                         <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">✓</div>
                         <div>
                             <p className="text-xs text-gray-400">Status</p>
-                            <p className="text-sm font-bold text-gray-900">Pembayaran Berhasil</p>
+                            <p className="text-sm font-bold text-gray-900">Tersedia</p>
                         </div>
                     </motion.div>
 
@@ -101,12 +101,12 @@ export default function Hero() {
                     <motion.div
                         animate={{ y: [0, 10, 0] }}
                         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                        className="absolute bottom-32 -right-8 bg-white p-3 rounded-xl shadow-xl border border-gray-100 z-20 flex items-center gap-3"
+                        className="absolute top-32 -right-2 bg-white p-3 rounded-xl shadow-xl border border-gray-100 z-20 flex items-center gap-3"
                     >
                         <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600">⭐</div>
                         <div>
                             <p className="text-xs text-gray-400">Rating</p>
-                            <p className="text-sm font-bold text-gray-900">4.9/5.0 (2k+)</p>
+                            <p className="text-sm font-bold text-gray-900">4.6/5.0 (20) </p>
                         </div>
                     </motion.div>
 

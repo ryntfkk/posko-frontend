@@ -2,26 +2,27 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const services = [
     {
         title: 'Cleaning Service',
-        image: 'https://images.unsplash.com/photo-1581578731117-10d521878d65?auto=format&fit=crop&q=80&w=400',
+        image: '/icons/janitor.png',
         desc: 'Pembersihan rumah, kantor, dan apartemen mendalam.'
     },
     {
         title: 'Reparasi Elektronik',
-        image: 'https://images.unsplash.com/photo-1597424214711-20a2e7311101?auto=format&fit=crop&q=80&w=400',
+        image: '/icons/air-conditioner.png',
         desc: 'Service AC, kulkas, mesin cuci, dan elektronik lainnya.'
     },
     {
-        title: 'Pijat & Spa',
-        image: 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&q=80&w=400',
+        title: 'Kecantikan',
+        image: '/icons/make-up.png',
         desc: 'Relaksasi tubuh dengan terapis profesional bersertifikat.'
     },
     {
         title: 'Angkut Barang',
-        image: 'https://images.unsplash.com/photo-1600518464441-9154a4dea21b?auto=format&fit=crop&q=80&w=400',
+        image: '/icons/moving.png',
         desc: 'Jasa pindahan rumah dan pengiriman barang besar.'
     }
 ];
@@ -35,10 +36,13 @@ export default function Services() {
                         <span className="text-primary font-bold text-sm tracking-wider uppercase mb-2 block">Layanan Kami</span>
                         <h2 className="text-3xl font-bold text-gray-900 leading-tight">Apapun Kebutuhanmu, <br /> Kami Siap Membantu</h2>
                     </div>
-                    <button className="text-primary font-semibold hover:text-primary-dark transition-colors flex items-center gap-1 group">
+                    <Link
+                        href="https://app.poskojasa.com"
+                        className="text-primary font-semibold hover:text-primary-dark transition-colors flex items-center gap-1 group"
+                    >
                         Lihat Semua Layanan
                         <span className="group-hover:translate-x-1 transition-transform">→</span>
-                    </button>
+                    </Link>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -55,9 +59,9 @@ export default function Services() {
                                 src={item.image}
                                 alt={item.title}
                                 fill
-                                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                className="object-contain p-8 transition-transform duration-700 group-hover:scale-110"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
 
                             <div className="absolute bottom-0 left-0 p-6 w-full transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
                                 <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>

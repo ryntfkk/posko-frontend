@@ -19,7 +19,7 @@ export default function PartnerCTA() {
 
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <Link
-                        href="#"
+                        href="/partner-gathering"
                         className="px-8 py-4 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/40 hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
                     >
                         Daftar Jadi Mitra Sekarang

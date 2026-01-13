@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,21 +21,29 @@ export default function Navbar() {
     const navLinks = [
         { name: 'Beranda', href: '#' },
         { name: 'Layanan', href: '#services' },
-        { name: 'Gabung Mitra', href: '#partner' },
-        { name: 'Bantuan', href: '#' },
+        { name: 'Tentang Kami', href: '/about' },
+        { name: 'Gabung Mitra', href: '/partner-gathering' },
+        { name: 'Bantuan', href: '/help' },
     ];
 
     return (
         <nav
             className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                    ? 'bg-white/80 backdrop-blur-lg shadow-sm py-4'
-                    : 'bg-transparent py-6'
+                ? 'bg-white/80 backdrop-blur-lg shadow-sm py-4'
+                : 'bg-transparent py-6'
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
                 {/* Logo - UPDATED: Black text + Red Dot */}
                 <div className="flex items-center gap-2">
-                    <span className="text-2xl font-black text-gray-900 tracking-tight">Posko<span className="text-red-600">.</span></span>
+                    <Image
+                        src="/logo.png"
+                        alt="Posko Logo"
+                        width={120}
+                        height={40}
+                        className="h-10 w-auto object-contain"
+                        priority
+                    />
                 </div>
 
                 {/* Desktop Nav */}

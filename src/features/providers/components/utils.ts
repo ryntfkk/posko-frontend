@@ -7,9 +7,9 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c;
   return d < 1 ? `${(d * 1000).toFixed(0)} m` : `${d.toFixed(1)} km`;
@@ -32,10 +32,10 @@ export function formatDuration(minutes?: number): string {
   return `${hours}j ${remainMins}m`;
 }
 
-// Fallback portfolio images
+// Fallback portfolio images (Using local icons as placeholders)
 export const FALLBACK_PORTFOLIO_IMAGES = [
-  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop',
+  '/icons/air-conditioner.png',
+  '/icons/handyman.png',
+  '/icons/electrician.png',
+  '/icons/janitor.png',
 ];
