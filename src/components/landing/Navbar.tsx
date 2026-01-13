@@ -32,9 +32,9 @@ export default function Navbar() {
                 }`}
         >
             <div className="max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
-                {/* Logo */}
+                {/* Logo - UPDATED: Black text + Red Dot */}
                 <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-primary tracking-tight">Posko</span>
+                    <span className="text-2xl font-black text-gray-900 tracking-tight">Posko<span className="text-red-600">.</span></span>
                 </div>
 
                 {/* Desktop Nav */}
@@ -43,7 +43,7 @@ export default function Navbar() {
                         <Link
                             key={link.name}
                             href={link.href}
-                            className="text-sm font-medium text-gray-600 hover:text-primary transition-colors"
+                            className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
                         >
                             {link.name}
                         </Link>
@@ -54,7 +54,7 @@ export default function Navbar() {
                 <div className="hidden lg:block">
                     <Link
                         href="https://app.poskojasa.com"
-                        className="px-6 py-2.5 bg-primary text-white text-sm font-semibold rounded-full shadow-lg shadow-primary/30 hover:bg-primary-dark transition-all hover:scale-105 active:scale-95"
+                        className="px-6 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-full shadow-lg shadow-red-600/30 hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
                     >
                         Masuk / Login
                     </Link>
@@ -92,7 +92,7 @@ export default function Navbar() {
                             <hr className="border-gray-100 my-2" />
                             <Link
                                 href="https://app.poskojasa.com"
-                                className="w-full block text-center px-6 py-3 bg-primary text-white text-base font-semibold rounded-xl shadow-lg shadow-primary/20"
+                                className="w-full block text-center px-6 py-3 bg-red-600 text-white text-base font-semibold rounded-xl shadow-lg shadow-red-600/20"
                                 onClick={() => setIsMobileMenuOpen(false)}
                             >
                                 Masuk / Login

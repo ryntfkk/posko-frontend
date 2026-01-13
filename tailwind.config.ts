@@ -13,9 +13,9 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "#2563EB", // Primary Blue
-          dark: "#1e40af",
-          light: "#60a5fa",
+          DEFAULT: "#DC2626", // Primary Red (Posko Brand)
+          dark: "#B91C1C",
+          light: "#FCA5A5",
         },
         secondary: {
           DEFAULT: "#64748B", // Secondary Slate

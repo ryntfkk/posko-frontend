@@ -5,9 +5,9 @@ import Link from 'next/link';
 export default function PartnerCTA() {
     return (
         <section className="py-24 bg-gray-900 relative overflow-hidden" id="partner">
-            {/* Decor */}
-            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/10 to-transparent"></div>
-            <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px]"></div>
+            {/* Decor - Red Tinted */}
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-red-600/10 to-transparent"></div>
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-red-600/20 rounded-full blur-[100px]"></div>
 
             <div className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10 text-center">
                 <h2 className="text-3xl lg:text-5xl font-bold text-white mb-6 tracking-tight">
@@ -20,7 +20,7 @@ export default function PartnerCTA() {
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <Link
                         href="#"
-                        className="px-8 py-4 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/40 hover:bg-primary-dark transition-all hover:scale-105 active:scale-95"
+                        className="px-8 py-4 bg-red-600 text-white font-bold rounded-xl shadow-lg shadow-red-600/40 hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
                     >
                         Daftar Jadi Mitra Sekarang
                     </Link>

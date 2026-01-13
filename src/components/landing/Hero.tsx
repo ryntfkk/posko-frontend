@@ -7,10 +7,10 @@ import { Play } from 'lucide-react';
 export default function Hero() {
     return (
         <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#f0f9ff_1px,transparent_1px),linear-gradient(to_bottom,#f0f9ff_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-            <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-50"></div>
-            <div className="absolute top-1/2 -left-24 w-72 h-72 bg-indigo-100 rounded-full blur-3xl opacity-50"></div>
+            {/* Background Elements - Warm/Red Toned */}
+            <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#fef2f2_1px,transparent_1px),linear-gradient(to_bottom,#fef2f2_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
+            <div className="absolute -top-24 -right-24 w-96 h-96 bg-red-100 rounded-full blur-3xl opacity-50"></div>
+            <div className="absolute top-1/2 -left-24 w-72 h-72 bg-orange-100 rounded-full blur-3xl opacity-50"></div>
 
             <div className="max-w-7xl mx-auto px-4 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
                 {/* Text Content */}
@@ -19,16 +19,17 @@ export default function Hero() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-semibold mb-6 border border-blue-100">
+                    {/* Badge - Red */}
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 text-red-600 text-xs font-semibold mb-6 border border-red-100">
                         <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                         </span>
                         Solusi Jasa #1 di Indonesia
                     </div>
 
                     <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
-                        Solusi Jasa Terpercaya dalam <span className="text-primary">Satu Genggaman</span>
+                        Solusi Jasa Terpercaya dalam <span className="text-red-600">Satu Genggaman</span>
                     </h1>
 
                     <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-lg">
@@ -73,13 +74,15 @@ export default function Hero() {
                         {/* Screen Content Placeholder */}
                         <div className="w-full h-full bg-white flex flex-col">
                             <div className="h-6 bg-gray-100 border-b border-gray-200"></div> {/* Status Bar */}
-                            <div className="p-4 bg-primary/5 flex items-center gap-3 mb-2"> {/* Header */}
-                                <div className="w-8 h-8 rounded-full bg-primary/20"></div>
+                            {/* Header Mockup - Red Tint */}
+                            <div className="p-4 bg-red-50 flex items-center gap-3 mb-2">
+                                <div className="w-8 h-8 rounded-full bg-red-100"></div>
                                 <div className="h-3 w-24 bg-gray-200 rounded"></div>
                             </div>
                             {/* Body */}
                             <div className="p-4 space-y-3">
-                                <div className="h-32 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50"></div>
+                                {/* Hero Banner Mockup - Red Gradient */}
+                                <div className="h-32 rounded-xl bg-gradient-to-br from-red-500 to-orange-400"></div>
                                 <div className="grid grid-cols-4 gap-2">
                                     {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square rounded-lg bg-gray-100"></div>)}
                                 </div>
@@ -93,8 +96,8 @@ export default function Hero() {
                         </div>
                     </div>
 
-                    {/* Decor Elements behind phone */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-primary/20 to-transparent rounded-full blur-3xl -z-10"></div>
+                    {/* Decor Elements behind phone - Red Blur */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-tr from-red-500/20 to-transparent rounded-full blur-3xl -z-10"></div>
 
                     {/* Floating Badge 1 */}
                     <motion.div
