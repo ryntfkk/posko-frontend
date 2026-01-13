@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Play } from 'lucide-react';
 
@@ -69,31 +70,15 @@ export default function Hero() {
                     transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
                     className="relative"
                 >
-                    {/* Abstract Phone Mockup */}
+                    {/* Phone Mockup with Image */}
                     <div className="relative mx-auto w-72 h-[580px] bg-gray-900 rounded-[3rem] border-8 border-gray-900 shadow-2xl overflow-hidden z-10">
-                        {/* Screen Content Placeholder */}
-                        <div className="w-full h-full bg-white flex flex-col">
-                            <div className="h-6 bg-gray-100 border-b border-gray-200"></div> {/* Status Bar */}
-                            {/* Header Mockup - Red Tint */}
-                            <div className="p-4 bg-red-50 flex items-center gap-3 mb-2">
-                                <div className="w-8 h-8 rounded-full bg-red-100"></div>
-                                <div className="h-3 w-24 bg-gray-200 rounded"></div>
-                            </div>
-                            {/* Body */}
-                            <div className="p-4 space-y-3">
-                                {/* Hero Banner Mockup - Red Gradient */}
-                                <div className="h-32 rounded-xl bg-gradient-to-br from-red-500 to-orange-400"></div>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square rounded-lg bg-gray-100"></div>)}
-                                </div>
-                                <div className="h-24 rounded-xl bg-gray-50 border border-gray-100"></div>
-                                <div className="h-24 rounded-xl bg-gray-50 border border-gray-100"></div>
-                            </div>
-                            {/* Bottom Nav */}
-                            <div className="mt-auto h-16 border-t border-gray-200 flex justify-around items-center">
-                                {[1, 2, 3, 4].map(i => <div key={i} className="w-6 h-6 rounded bg-gray-200"></div>)}
-                            </div>
-                        </div>
+                        <Image
+                            src="/images/partner-gathering/app-mockup.png"
+                            alt="Aplikasi Posko"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                        />
                     </div>
 
                     {/* Decor Elements behind phone - Red Blur */}

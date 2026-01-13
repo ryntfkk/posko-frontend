@@ -34,14 +34,14 @@ import {
 export default function PublicProfilePage() {
   const params = useParams();
   const router = useRouter();
-  
+
   const identifier = Array.isArray(params.username) ? params.username[0] : params.username;
 
   // Data State
   const [user, setUser] = useState<User | null>(null);
   const [provider, setProvider] = useState<Provider | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [distance, setDistance] = useState('Menghitung...');
 
@@ -66,12 +66,12 @@ export default function PublicProfilePage() {
   // Load Data
   useEffect(() => {
     if (!identifier) return;
-    
+
     const loadData = async () => {
       try {
         setIsLoading(true);
         const response = await fetchPublicProfile(identifier);
-        
+
         setUser(response.data.user);
         setProvider(response.data.provider);
 
@@ -82,10 +82,10 @@ export default function PublicProfilePage() {
 
           if (response.data.provider?._id) {
             try {
-               const favRes = await checkFavoriteStatus(response.data.provider._id);
-               setIsFavorited(favRes.data.isFavorited);
+              const favRes = await checkFavoriteStatus(response.data.provider._id);
+              setIsFavorited(favRes.data.isFavorited);
             } catch (err) {
-               console.error('Gagal cek status favorit:', err);
+              console.error('Gagal cek status favorit:', err);
             }
           }
         } else {
@@ -98,7 +98,7 @@ export default function PublicProfilePage() {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
   }, [identifier]);
 
@@ -107,7 +107,7 @@ export default function PublicProfilePage() {
     // [UPDATE] Use defaultLocation from Address collection instead of user.location
     const currentUserLocation = (currentUser as any)?.defaultLocation?.coordinates;
     const targetUserLocation = (user as any)?.defaultLocation?.coordinates;
-    
+
     if (currentUserLocation && targetUserLocation) {
       const [uLng, uLat] = currentUserLocation;
       const [targetLng, targetLat] = targetUserLocation;
@@ -127,8 +127,8 @@ export default function PublicProfilePage() {
       try {
         await navigator.share({
           title: `Profil ${user?.fullName || 'Pengguna Posko'}`,
-          text: provider 
-            ? 'Cek jasa profesional ini di Posko!' 
+          text: provider
+            ? 'Cek jasa profesional ini di Posko!'
             : 'Lihat profil pengguna ini di Posko!',
           url: shareUrl,
         });
@@ -144,50 +144,37 @@ export default function PublicProfilePage() {
 
   const handleToggleFavorite = async () => {
     if (!provider) return;
-    
+
     const oldIsFavorited = isFavorited;
     const oldProvider = { ...provider };
-    
+
     const newStatus = !oldIsFavorited;
     setIsFavorited(newStatus);
-    
+
     const currentFavs = provider.totalFavorites || 0;
     const newFavs = newStatus ? currentFavs + 1 : Math.max(0, currentFavs - 1);
-    
+
     setProvider({
-        ...provider,
-        totalFavorites: newFavs
+      ...provider,
+      totalFavorites: newFavs
     });
 
     try {
-        await toggleFavorite(provider._id);
+      await toggleFavorite(provider._id);
     } catch (error) {
-        console.error('Gagal update favorit:', error);
-        setIsFavorited(oldIsFavorited);
-        setProvider(oldProvider);
-        alert('Gagal menyimpan favorit. Silakan coba lagi.');
+      console.error('Gagal update favorit:', error);
+      setIsFavorited(oldIsFavorited);
+      setProvider(oldProvider);
+      alert('Gagal menyimpan favorit. Silakan coba lagi.');
     }
   };
 
   const handleChat = async () => {
-    if (!currentUser) {
-        alert('Silakan login terlebih dahulu untuk chat.');
-        router.push('/login');
-        return;
-    }
-    if (!user) return;
-    if (isChatLoading) return;
-    setIsChatLoading(true);
-
-    try {
-        await api.post('/chat', { targetUserId: user._id });
-        router.push('/chat');
-    } catch (error: any) {
-        console.error('Gagal memulai chat:', error);
-        const msg = error.response?.data?.message || 'Gagal menghubungkan chat.';
-        alert(msg);
-    } finally {
-        setIsChatLoading(false);
+    // Redirect ke Web App untuk Chat
+    if (user?._id) {
+      window.location.href = `https://app.poskojasa.com/chat?target=${user._id}`;
+    } else {
+      window.location.href = 'https://app.poskojasa.com/login';
     }
   };
 
@@ -212,7 +199,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 pb-24 lg:pb-0">
-      
+
       {/* HEADER: Minimalist Sticky */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
@@ -222,7 +209,7 @@ export default function PublicProfilePage() {
           >
             <BackIcon />
           </Link>
-          
+
           {/* [UPDATED] Nama diperbesar (text-lg) & max-width ditambah */}
           <h1 className="text-lg font-bold text-gray-900 truncate max-w-[240px] flex items-center gap-1.5">
             {user.fullName}
@@ -234,9 +221,9 @@ export default function PublicProfilePage() {
               </span>
             )}
           </h1>
-          
+
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={handleShare}
               className="p-1.5 text-gray-600 hover:bg-gray-50 rounded-full"
             >
@@ -251,9 +238,9 @@ export default function PublicProfilePage() {
       {/* MAIN CONTENT WRAPPER */}
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 items-start">
-          
+
           <div className="lg:col-span-8 w-full lg:pr-12">
-            
+
             <ProfileHeroSection
               user={user}
               provider={provider}
@@ -279,7 +266,7 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="hidden lg:block lg:col-span-4 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto lg:border-l lg:border-gray-100 lg:pl-10 lg:py-8">
-             <ProfileSidebar user={user} provider={provider} />
+            <ProfileSidebar user={user} provider={provider} />
           </div>
 
         </div>
@@ -287,19 +274,19 @@ export default function PublicProfilePage() {
 
       {provider && (
         <>
-            <ProviderCalendarModal
-                provider={provider}
-                isOpen={isCalendarOpen}
-                currentMonth={currentMonth}
-                onClose={handleCloseCalendar}
-                onChangeMonth={handleChangeMonth}
-            />
+          <ProviderCalendarModal
+            provider={provider}
+            isOpen={isCalendarOpen}
+            currentMonth={currentMonth}
+            onClose={handleCloseCalendar}
+            onChangeMonth={handleChangeMonth}
+          />
 
-            <ProviderServiceDetailModal
-                provider={provider}
-                selectedService={selectedService}
-                onClose={handleCloseServiceDetail}
-            />
+          <ProviderServiceDetailModal
+            provider={provider}
+            selectedService={selectedService}
+            onClose={handleCloseServiceDetail}
+          />
         </>
       )}
 

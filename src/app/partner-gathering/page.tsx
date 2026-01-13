@@ -21,6 +21,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import Header from '@/components/layout/Header';
 
 // --- UTILS: Zero-Lag Scroll Reveal Engine ---
 // Menggunakan IntersectionObserver asli browser untuk performa maksimal
@@ -54,6 +55,9 @@ const RevealOnScroll = ({ children, className = "", delay = 0 }: { children: Rea
 export default function PartnerGatheringPage() {
   return (
     <main className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden selection:bg-red-100 selection:text-red-900">
+
+      {/* Header untuk Partner Gathering */}
+      <Header />
 
       {/* GLOBAL STYLES FOR NATIVE ANIMATIONS */}
       <style jsx global>{`
@@ -575,7 +579,7 @@ export default function PartnerGatheringPage() {
             </h2>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href="/register"
+                href="https://app.poskojasa.com/register"
                 className="w-full sm:w-auto px-8 py-4 bg-red-600 text-white rounded-full font-bold text-lg hover:bg-red-700 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
                 Daftar Sekarang

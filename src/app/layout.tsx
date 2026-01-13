@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google"; 
+import { Inter } from "next/font/google";
 import "./globals.css";
-import "leaflet/dist/leaflet.css"; 
-import BottomNav from "@/components/BottomNav"; 
-import QueryProvider from "@/providers/QueryProvider";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { SocketProvider } from "@/context/SocketContext";
-import Header from "@/components/layout/Header"; // IMPORT BARU
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-inter", 
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -29,21 +24,15 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body
-        className={`${inter.className} ${inter.variable} antialiased bg-gray-50 text-gray-900 pb-0`} 
+        className={`${inter.className} ${inter.variable} antialiased bg-gray-50 text-gray-900 pb-0`}
         suppressHydrationWarning={true}
       >
-        <QueryProvider>
-          <SocketProvider>
-            <LanguageProvider>
-              {/* HEADER GLOBAL: Konsisten di Desktop & Mobile */}
-              <Header />
-              <main className="min-h-screen">
-                {children}
-              </main>
-              <BottomNav />
-            </LanguageProvider>
-          </SocketProvider>
-        </QueryProvider>
+        <LanguageProvider>
+          {/* HEADER GLOBAL: Removed to prevent duplicates. Added manually to pages. */}
+          <main className="min-h-screen">
+            {children}
+          </main>
+        </LanguageProvider>
       </body>
     </html>
   );

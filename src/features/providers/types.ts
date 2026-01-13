@@ -65,6 +65,7 @@ export interface Provider {
   services: ProviderServiceItem[];
   rating: number;
   isOnline: boolean;
+  verificationStatus?: string;
   createdAt: string;
 
   // Sistem Kalender
@@ -76,7 +77,7 @@ export interface Provider {
 
   // Statistik
   totalCompletedOrders?: number;
-  totalFavorites?: number; 
+  totalFavorites?: number;
 
   // Jadwal Operasional
   schedule?: ScheduleItem[];
