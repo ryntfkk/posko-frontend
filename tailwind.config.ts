@@ -12,6 +12,16 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        primary: {
+          DEFAULT: "#2563EB", // Primary Blue
+          dark: "#1e40af",
+          light: "#60a5fa",
+        },
+        secondary: {
+          DEFAULT: "#64748B", // Secondary Slate
+          dark: "#475569",
+          light: "#94a3b8",
+        },
       },
       fontFamily: {
         sans: ["var(--font-inter)"], // Agar font Inter dari layout.tsx terbaca

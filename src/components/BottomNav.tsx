@@ -23,10 +23,11 @@ export default function BottomNav() {
   const shouldHideBottomNav = () => {
     // 1. Static Paths (Auth, Checkout, etc)
     const hiddenPaths = [
-      '/login', 
-      '/register', 
-      '/forgot-password', 
-      '/checkout', 
+      '/',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/checkout',
       '/order/summary',
       '/chat/room' // Contoh jika ada chat room full screen
     ];
@@ -62,13 +63,13 @@ export default function BottomNav() {
         {MAIN_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
-            <Link 
+            <Link
               key={item.href}
-              href={item.href} 
-              className="flex-1 flex flex-col items-center justify-center group" 
+              href={item.href}
+              className="flex-1 flex flex-col items-center justify-center group"
               aria-label={t(item.label)}
             >
-              <Icon 
+              <Icon
                 className={`${iconBaseClass} ${isActive(item.href) ? activeClass : inactiveClass}`}
                 strokeWidth={isActive(item.href) ? 2.5 : 2}
               />
@@ -79,9 +80,9 @@ export default function BottomNav() {
         {/* --- NOTIFICATIONS (Manual Handling for Badge) --- */}
         <Link href="/notifications" className="flex-1 flex flex-col items-center justify-center group relative" aria-label="Notifikasi">
           <div className="relative">
-            <Bell 
-               className={`${iconBaseClass} ${isActive('/notifications') ? activeClass : inactiveClass}`}
-               strokeWidth={isActive('/notifications') ? 2.5 : 2}
+            <Bell
+              className={`${iconBaseClass} ${isActive('/notifications') ? activeClass : inactiveClass}`}
+              strokeWidth={isActive('/notifications') ? 2.5 : 2}
             />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm animate-pulse">
@@ -93,9 +94,9 @@ export default function BottomNav() {
 
         {/* --- PROFILE (Manual Handling for Specific Logic) --- */}
         <Link href="/profile" className="flex-1 flex flex-col items-center justify-center group" aria-label={t('nav.profile')}>
-          <User 
-             className={`${iconBaseClass} ${isActive('/profile') ? activeClass : inactiveClass}`}
-             strokeWidth={isActive('/profile') ? 2.5 : 2}
+          <User
+            className={`${iconBaseClass} ${isActive('/profile') ? activeClass : inactiveClass}`}
+            strokeWidth={isActive('/profile') ? 2.5 : 2}
           />
         </Link>
 

@@ -21,12 +21,12 @@ interface GlobalSearchInputProps {
   className?: string;
 }
 
-const GlobalSearchInput = ({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  placeholder, 
-  className = "" 
+const GlobalSearchInput = ({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+  className = ""
 }: GlobalSearchInputProps) => (
   <div className={`relative ${className}`}>
     <input
@@ -46,14 +46,14 @@ export default function Header() {
   const pathname = usePathname();
   const { t, language } = useLanguage();
   const { user, isLoading, isLoggedIn, logout } = useAuth();
-  
+
   // MENGGUNAKAN ONE SOURCE OF TRUTH UNTUK NOTIFIKASI
   // Hook ini sama dengan yang dipakai di BottomNav
   const { data: unreadCount = 0 } = useUnreadCount();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
+
   // [NEW] STATE UNTUK MENGATASI HYDRATION MISMATCH DAN FLICKERING AUTH BUTTON
   const [isMounted, setIsMounted] = useState(false);
 
@@ -66,23 +66,23 @@ export default function Header() {
   // Tidak akan muncul di halaman Chat, Profile, Detail Order, dll.
   const showMobileSearch = ['/', '/search'].includes(pathname) || pathname.startsWith('/services');
 
-  // Sembunyikan header pada halaman Auth
+  // Sembunyikan header pada halaman Auth dan Landing Page
   const isAuthPage = ['/login', '/register', '/forgot-password'].includes(pathname);
-  if (isAuthPage) return null;
+  if (isAuthPage || pathname === '/') return null;
 
   // Helper Data User
   const profileName = user?.fullName || 'User Posko';
   const profileEmail = user?.email || '-';
   const profileBadge = user?.activeRole ? user.activeRole.charAt(0).toUpperCase() + user.activeRole.slice(1) : 'Member';
   const profileAvatar = user?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
-  
+
   // Cek sederhana untuk UI Mitra
   const hasProviderRole = user?.roles?.includes('provider');
 
   const handleSearchSubmit = (e: React.FormEvent | React.KeyboardEvent) => {
     // Mencegah default form submit jika dipanggil dari onSubmit form
-    if ('preventDefault' in e) e.preventDefault(); 
-    
+    if ('preventDefault' in e) e.preventDefault();
+
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
       // Optional: Close keyboard on mobile logic could go here
@@ -109,11 +109,11 @@ export default function Header() {
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
-          
+
           {/* [FIX] LOADING STATE HANDLING PADA MOBILE */}
           {/* Jika belum mounted (SSR) atau sedang loading data user, tampilkan Skeleton */}
           {!isMounted || isLoading ? (
-             <div className="w-7 h-7 rounded-full bg-gray-200 animate-pulse" />
+            <div className="w-7 h-7 rounded-full bg-gray-200 animate-pulse" />
           ) : isLoggedIn ? (
             <Link href="/profile">
               <div className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative active:scale-95 transition-transform">
@@ -138,7 +138,7 @@ export default function Header() {
       {/* [FIX] Search bar sekarang hanya muncul di halaman yang relevan sesuai logika showMobileSearch */}
       {showMobileSearch && (
         <div className="lg:hidden px-4 py-2 bg-white sticky top-[48px] z-20 border-b border-gray-100 shadow-sm animate-fadeIn">
-          <GlobalSearchInput 
+          <GlobalSearchInput
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onSubmit={handleSearchSubmit}
@@ -163,18 +163,17 @@ export default function Header() {
               </div>
               <span className="text-xl font-black text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
             </Link>
-            
+
             {/* [FIX] MENGGUNAKAN MAIN_NAV_ITEMS AGAR KONSISTEN ONE SOURCE OF TRUTH */}
             <nav className="flex gap-6 text-sm font-bold text-gray-600">
               {MAIN_NAV_ITEMS.map((item) => (
-                <Link 
+                <Link
                   key={item.href}
-                  href={item.href} 
-                  className={`hover:text-red-600 transition-colors ${
-                    (item.href === '/' && pathname === '/') || (item.href !== '/' && pathname.startsWith(item.href))
-                      ? 'text-red-600' 
+                  href={item.href}
+                  className={`hover:text-red-600 transition-colors ${(item.href === '/' && pathname === '/') || (item.href !== '/' && pathname.startsWith(item.href))
+                      ? 'text-red-600'
                       : ''
-                  }`}
+                    }`}
                 >
                   {t(item.label)}
                 </Link>
@@ -184,7 +183,7 @@ export default function Header() {
 
           <div className="flex items-center gap-6">
             <div className="w-64">
-              <GlobalSearchInput 
+              <GlobalSearchInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onSubmit={handleSearchSubmit}
@@ -198,12 +197,12 @@ export default function Header() {
             {/* Mencegah tombol Login muncul sekejap saat user sebenarnya sudah login */}
             {!isMounted || isLoading ? (
               <div className="flex items-center gap-3">
-                 <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
-                 <div className="w-24 h-8 bg-gray-200 rounded-full animate-pulse" />
+                <div className="w-6 h-6 bg-gray-200 rounded-full animate-pulse" />
+                <div className="w-24 h-8 bg-gray-200 rounded-full animate-pulse" />
               </div>
             ) : isLoggedIn ? (
               <div className="flex items-center gap-4">
-                
+
                 {/* [NEW] NOTIFICATION BELL (Desktop) */}
                 <Link href="/notifications" className="relative text-gray-500 hover:text-red-600 transition-colors p-1 group">
                   <Bell className="w-5 h-5 group-hover:animate-swing" />
@@ -226,7 +225,7 @@ export default function Header() {
                       />
                     </div>
                   </button>
-                  
+
                   {isProfileOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
@@ -250,25 +249,25 @@ export default function Header() {
                         </div>
 
                         <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
-                          
+
                           {/* DYNAMIC MENU FROM CONFIG */}
                           {/* [FIX] Memastikan Desktop User memiliki akses ke semua menu yang ada di Mobile */}
                           {PROFILE_MENU_ITEMS.map((section, idx) => (
-                             <div key={idx} className={idx === 0 ? "px-2 pt-3 pb-1" : "px-2 py-2"}>
-                                {idx > 0 && <div className="h-px bg-gray-50 mx-2 mb-2"></div>}
-                                <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">{section.group}</h3>
-                                {section.items.map((item) => (
-                                  <Link key={item.href} href={item.href} className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-7 h-7 rounded-full flex items-center justify-center ${item.bg} ${item.color} group-hover:bg-opacity-80 transition-colors`}>
-                                        <item.icon className="w-3.5 h-3.5" />
-                                      </div>
-                                      <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
+                            <div key={idx} className={idx === 0 ? "px-2 pt-3 pb-1" : "px-2 py-2"}>
+                              {idx > 0 && <div className="h-px bg-gray-50 mx-2 mb-2"></div>}
+                              <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">{section.group}</h3>
+                              {section.items.map((item) => (
+                                <Link key={item.href} href={item.href} className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${item.bg} ${item.color} group-hover:bg-opacity-80 transition-colors`}>
+                                      <item.icon className="w-3.5 h-3.5" />
                                     </div>
-                                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                                  </Link>
-                                ))}
-                             </div>
+                                    <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{item.label}</span>
+                                  </div>
+                                  <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                                </Link>
+                              ))}
+                            </div>
                           ))}
 
                           <div className="h-px bg-gray-50 mx-4"></div>
@@ -276,9 +275,9 @@ export default function Header() {
                           {/* SECTION: MITRA (External Link) */}
                           <div className="px-2 py-2">
                             <h3 className="text-[10px] font-bold text-gray-400 mb-2 px-2 uppercase tracking-wider">Area Mitra</h3>
-                            <a 
-                              href="https://provider.poskojasa.com" 
-                              target="_blank" 
+                            <a
+                              href="https://provider.poskojasa.com"
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group text-left"
                             >
@@ -301,10 +300,10 @@ export default function Header() {
 
                           {/* Logout */}
                           <div className="px-4 pb-4 pt-2 border-t border-gray-50 mt-2">
-                              <button onClick={logout} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                <LogOut className="w-3.5 h-3.5" />
-                                {t('auth.logout')}
-                              </button>
+                            <button onClick={logout} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                              <LogOut className="w-3.5 h-3.5" />
+                              {t('auth.logout')}
+                            </button>
                           </div>
 
                         </div>
